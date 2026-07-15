@@ -1,11 +1,15 @@
 locals {
-  project = "ot-demo"
-
-  cluster_name = "${local.project}-${var.environment}"
+  project     = "ot-demo"
+  repository  = "ot-demo-tf"
+  environment = "dev"
+  layer       = "infrastructure"
+  cluster_name = "${local.project}-${local.environment}"
 
   common_tags = {
-    Project     = "ot-demo"
-    Environment = var.environment
+    Project     = local.project
+    Repository  = local.repository
+    Environment = local.environment
+    Layer       = local.layer
     ManagedBy   = "Terraform"
   }
 }
