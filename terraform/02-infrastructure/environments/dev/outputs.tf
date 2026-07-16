@@ -31,6 +31,11 @@ output "cluster_oidc_issuer_url" {
   value       = module.eks.cluster_oidc_issuer_url
 }
 
+output "cluster_oidc_provider_arn" {
+  description = "OIDC provider ARN for IRSA"
+  value       = module.eks.cluster_oidc_provider_arn
+}
+
 # Security
 output "cluster_security_group_id" {
   description = "EKS cluster security group ID"
