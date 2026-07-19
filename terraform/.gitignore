@@ -12,8 +12,8 @@
 **/crash.*.log
 
 # Block local variable files (often containing secrets)
-**/*.tfvars
-**/*.tfvars.json
+#**/*.tfvars
+#**/*.tfvars.json
 
 # Block override files
 override.tf
