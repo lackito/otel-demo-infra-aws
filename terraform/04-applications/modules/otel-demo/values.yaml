@@ -1,5 +1,3 @@
-file_format: yaml
-
 opentelemetry-collector:
   enabled: true
   mode: deployment
@@ -16,3 +14,9 @@ grafana:
 
 opensearch:
   enabled: false
+
+components:
+  recommendation:
+    imageOverride:
+      repository: 650032249451.dkr.ecr.us-east-1.amazonaws.com/recommendation
+      tag: dev
