@@ -35,7 +35,7 @@ resource "helm_release" "this" {
     kubernetes_service_account.this
   ]
 
-  wait = true
+  wait    = true
   timeout = 600
-  atomic = true
+  atomic  = true
 }

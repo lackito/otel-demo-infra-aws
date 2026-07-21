@@ -18,3 +18,11 @@ output "aws_load_balancer_controller_role_arn" {
   description = "IAM role ARN used by AWS Load Balancer Controller"
   value       = module.aws_load_balancer_controller.role_arn
 }
+
+output "argocd_namespace" {
+  value = module.argocd.namespace
+}
+
+output "argocd_release" {
+  value = module.argocd.release_name
+}

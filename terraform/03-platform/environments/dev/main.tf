@@ -27,3 +27,7 @@ module "aws_load_balancer_controller" {
   region             = var.aws_region
   helm_chart_version = var.helm_chart_version
 }
+
+module "argocd" {
+  source = "../../modules/argocd"
+}
