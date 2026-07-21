@@ -2,19 +2,36 @@
 
 ## Overview
 
-The **Platform** layer installs shared Kubernetes platform services on the Amazon EKS cluster created by the Infrastructure layer.
+The **Platform** layer installs shared Kubernetes services required by applications running on the Amazon EKS cluster created by the Infrastructure layer.
 
-Its primary responsibility is to prepare the Kubernetes platform so application teams can deploy workloads without requiring AWS-specific knowledge.
+This layer sits between:
 
-Currently this layer deploys the **AWS Load Balancer Controller**, which enables Kubernetes `Ingress` and `Service` resources to automatically provision AWS Elastic Load Balancers.
+```
+01-bootstrap
+        |
+        v
+02-infrastructure
+        |
+        v
+03-platform
+        |
+        v
+04-applications
+```
 
-Keeping Platform separate from Infrastructure and Applications provides:
+The purpose of this layer is to provide Kubernetes platform capabilities without coupling application deployments to AWS infrastructure details.
 
-- Independent Terraform state
-- Clear separation of responsibilities
-- Reusable platform modules
-- Easier upgrades and maintenance
-- Cleaner destroy/rebuild lifecycle
+---
+
+# Responsibilities
+
+The Platform layer currently manages:
+
+- AWS Load Balancer Controller
+- IAM permissions required by Kubernetes workloads
+- IRSA (IAM Roles for Service Accounts)
+- Helm-based Kubernetes platform deployments
+- Argo CD installation for GitOps workflows
 
 ---
 
@@ -23,89 +40,39 @@ Keeping Platform separate from Infrastructure and Applications provides:
 ```
 ┌──────────────────────────┐
 │ 01-bootstrap             │
-│ S3 Backend + DynamoDB    │
+│                          │
+│ S3 Backend               │
+│ DynamoDB Locking         │
 └─────────────┬────────────┘
-              │
-              ▼
+              |
+              v
 ┌──────────────────────────┐
 │ 02-infrastructure        │
 │                          │
-│ • VPC                    │
-│ • EKS Cluster            │
-│ • Node Groups            │
-│ • IAM                    │
+│ VPC                      │
+│ EKS Cluster              │
+│ Managed Node Groups      │
+│ IAM                      │
+│ OIDC Provider            │
 └─────────────┬────────────┘
-              │
-              ▼
+              |
+              v
 ┌──────────────────────────┐
 │ 03-platform              │
 │                          │
-│ • AWS LB Controller      │
-│ • IRSA                   │
-│ • Helm                   │
+│ AWS LB Controller        │
+│ IRSA                     │
+│ Argo CD                  │
+│ Helm Deployments         │
 └─────────────┬────────────┘
-              │
-              ▼
+              |
+              v
 ┌──────────────────────────┐
 │ 04-applications          │
 │                          │
-│ OpenTelemetry Demo       │
+│ ECR                      │
+│ Application Deployments  │
 └──────────────────────────┘
-```
-
----
-
-# What This Layer Deploys
-
-The Platform layer currently installs:
-
-- AWS Load Balancer Controller Helm chart
-- IAM Policy
-- IAM Role
-- IAM Role Policy Attachment
-- Kubernetes Service Account
-- IRSA (IAM Roles for Service Accounts)
-
-Terraform creates the IAM resources while Helm installs the controller into the Kubernetes cluster.
-
----
-
-# What This Layer Does **NOT** Do
-
-A common misconception is that deploying this project immediately creates an AWS Application Load Balancer.
-
-**It does not.**
-
-This layer only installs the **AWS Load Balancer Controller** inside the Kubernetes cluster.
-
-The controller continuously watches Kubernetes resources.
-
-When an application later creates an:
-
-- Ingress
-- Service of type LoadBalancer
-
-the controller automatically provisions the appropriate AWS resources, including:
-
-- Application Load Balancer (ALB)
-- Network Load Balancer (NLB)
-- Target Groups
-- Security Groups
-- Listener Rules
-
-In other words:
-
-```
-Terraform
-     │
-     ▼
-AWS Load Balancer Controller
-     │
-     ▼
-Kubernetes Ingress
-     │
-     ▼
-AWS ALB
 ```
 
 ---
@@ -114,91 +81,188 @@ AWS ALB
 
 ```
 03-platform/
+
 ├── environments/
 │   └── dev/
 │       ├── backend.tf
-│       ├── data.tf
 │       ├── locals.tf
 │       ├── main.tf
 │       ├── outputs.tf
 │       ├── providers.tf
 │       ├── terraform.tfvars
+│       ├── variables.tf
 │       └── versions.tf
 │
-└── modules/
-    └── aws-load-balancer-controller/
-        ├── helm.tf
-        ├── iam.tf
-        ├── main.tf
-        ├── outputs.tf
-        └── variables.tf
+├── modules/
+│   │
+│   ├── aws-load-balancer-controller/
+│   │   ├── helm.tf
+│   │   ├── iam_policy.json
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   ├── service-account.tf
+│   │   └── variables.tf
+│   │
+│   └── argocd/
+│       ├── main.tf
+│       ├── outputs.tf
+│       └── variables.tf
+│
+└── README.md
+```
+
+---
+
+# Terraform Modules
+
+## AWS Load Balancer Controller
+
+The module installs:
+
+- AWS Load Balancer Controller Helm chart
+- IAM Policy
+- IAM Role
+- IAM Role Policy Attachment
+- Kubernetes Service Account
+
+The controller uses **IRSA** instead of node-level IAM permissions.
+
+Flow:
+
+```
+Kubernetes Service Account
+            |
+            v
+        IRSA Trust
+            |
+            v
+     IAM Role
+            |
+            v
+ AWS Load Balancer Controller
+            |
+            v
+ AWS APIs
+```
+
+---
+
+## Argo CD
+
+The Argo CD module installs the GitOps deployment engine.
+
+Current configuration:
+
+- Helm chart: `argo-cd`
+- Repository:
+  ```
+  https://argoproj.github.io/argo-helm
+  ```
+
+- Namespace:
+  ```
+  argocd
+  ```
+
+Development configuration:
+
+```yaml
+server:
+  service:
+    type: ClusterIP
+
+configs:
+  params:
+    server.insecure: true
+```
+
+Access is provided using Kubernetes port forwarding:
+
+```bash
+kubectl port-forward svc/argocd-server \
+-n argocd \
+8080:443
 ```
 
 ---
 
 # Dependencies
 
-Before deploying this layer the following must already exist.
+Before deploying this layer:
+
+Required:
 
 - AWS Account
 - AWS CLI configured
-- kubectl installed
-- Helm installed
 - Terraform >= 1.13
+- kubectl
+- Helm
 
-Infrastructure layer must already be deployed.
+The Infrastructure layer must already exist.
 
-This project consumes the following remote state outputs:
+This layer consumes Terraform remote state outputs:
 
-| Output | Purpose |
-|---------|----------|
-| cluster_name | EKS cluster |
+| Output | Usage |
+|---|---|
+| cluster_name | Kubernetes access |
 | cluster_endpoint | Kubernetes provider |
-| cluster_oidc_issuer_url | IRSA |
 | cluster_oidc_provider_arn | IRSA |
-| vpc_id | Load Balancer Controller |
+| cluster_oidc_issuer_url | IRSA |
+| vpc_id | AWS Load Balancer Controller |
 
 ---
 
-# Configuration
+# Provider Versions
 
-Environment configuration lives in:
-
-```
-environments/dev/terraform.tfvars
-```
-
-Example:
+Current providers:
 
 ```hcl
-aws_region = "us-east-1"
+terraform {
+  required_version = ">= 1.13"
 
-helm_chart_version = "1.11.0"
+  required_providers {
+
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.38"
+    }
+
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.0"
+    }
+  }
+}
 ```
 
 ---
 
 # Deployment
 
-Initialize Terraform.
+Initialize:
 
 ```bash
 terraform init
 ```
 
-Validate.
+Validate:
 
 ```bash
 terraform validate
 ```
 
-Review changes.
+Plan:
 
 ```bash
 terraform plan
 ```
 
-Deploy.
+Apply:
 
 ```bash
 terraform apply
@@ -208,15 +272,17 @@ terraform apply
 
 # Validation
 
-Update kubeconfig.
+Update kubeconfig:
 
 ```bash
 aws eks update-kubeconfig \
-  --region us-east-1 \
-  --name ot-demo-dev
+--region us-east-1 \
+--name ot-demo-dev
 ```
 
-Verify deployment.
+---
+
+## Verify AWS Load Balancer Controller
 
 ```bash
 kubectl get deployment \
@@ -227,13 +293,11 @@ aws-load-balancer-controller \
 Expected:
 
 ```
-READY   UP-TO-DATE   AVAILABLE
+READY   AVAILABLE
 2/2
 ```
 
----
-
-Verify Pods.
+Verify pods:
 
 ```bash
 kubectl get pods \
@@ -241,131 +305,96 @@ kubectl get pods \
 -l app.kubernetes.io/name=aws-load-balancer-controller
 ```
 
-Expected:
-
-```
-2 Running
-```
-
 ---
 
-Verify Service Account.
+## Verify IRSA
 
 ```bash
-kubectl get sa \
+kubectl get serviceaccount \
 aws-load-balancer-controller \
 -n kube-system \
 -o yaml
 ```
 
-Verify the annotation exists.
+Expected:
 
 ```yaml
 annotations:
   eks.amazonaws.com/role-arn:
 ```
 
-This confirms IRSA is correctly configured.
-
 ---
 
-# Outputs
-
-| Output | Description |
-|---------|-------------|
-| cluster_name | EKS cluster name |
-| cluster_endpoint | Kubernetes API endpoint |
-| cluster_oidc_issuer_url | OIDC issuer URL |
-| vpc_id | Cluster VPC |
-| aws_load_balancer_controller_role_arn | IAM Role used by IRSA |
-
----
-
-# Troubleshooting
-
-## kubectl points to an old cluster
-
-Symptoms:
-
-```
-no such host
-```
-
-Update kubeconfig.
+## Verify Argo CD
 
 ```bash
-aws eks update-kubeconfig \
---region us-east-1 \
---name ot-demo-dev
+kubectl get pods -n argocd
+```
+
+Expected:
+
+```
+argocd-server
+argocd-repo-server
+argocd-application-controller
 ```
 
 ---
 
-## OIDC provider changed
+# GitOps Workflow
 
-Symptoms:
+The deployment workflow is:
 
 ```
-AccessDenied
-
-AssumeRoleWithWebIdentity
+Developer
+    |
+    v
+Application Repository
+    |
+    v
+GitHub Actions
+    |
+    v
+Container Image
+    |
+    v
+Amazon ECR
+    |
+    v
+GitOps Repository
+    |
+    v
+Argo CD
+    |
+    v
+Amazon EKS
 ```
 
-Cause:
+The GitOps repository:
 
-The EKS cluster was destroyed and recreated.
-
-The OIDC provider changed.
-
-Solution:
-
-```bash
-terraform apply
+```
+ot-demo-gitops
 ```
 
-Terraform recreates the IAM trust relationship.
+contains:
+
+```
+argocd/
+ └── applications/
+      └── otel-demo.yaml
+
+applications/
+ └── otel-demo/
+      └── values.yaml
+```
+
+Argo CD manages application synchronization from Git.
 
 ---
 
-## IAM Policy already exists
+# Destroy Procedure
 
-Symptoms:
-
-```
-EntityAlreadyExists
-```
-
-Cause:
-
-The IAM policy was previously created manually.
-
-Solution:
-
-Delete the manually created policy or import it into Terraform state.
-
----
-
-## Helm deployment timeout
-
-Symptoms:
-
-```
-context deadline exceeded
-```
-
-Increase:
-
-```hcl
-timeout = 600
-```
-
-The Helm provider expects the timeout value in **seconds**, not as a string such as `"10m"`.
-
----
-
-# Destroy
-
-Destroy resources in the following order.
+Recommended order:
 
 ```
 04-applications
@@ -380,57 +409,137 @@ Destroy resources in the following order.
 
 ↓
 
-01-bootstrap (optional)
+01-bootstrap
 ```
 
-Destroy the Platform layer.
+Destroy this layer:
 
 ```bash
 terraform destroy
+```
+
+Before destroying:
+
+- Remove Argo CD managed applications
+- Confirm workloads are removed
+- Confirm no AWS resources depend on platform components
+
+---
+
+# Troubleshooting
+
+## EKS recreated and IRSA fails
+
+Symptoms:
+
+```
+AccessDenied
+AssumeRoleWithWebIdentity
+```
+
+Cause:
+
+The EKS OIDC provider changed.
+
+Solution:
+
+```bash
+terraform apply
+```
+
+Terraform recreates IAM trust relationships.
+
+---
+
+## Existing IAM resources conflict
+
+Symptoms:
+
+```
+EntityAlreadyExists
+RepositoryAlreadyExists
+```
+
+Cause:
+
+Resource exists outside Terraform management.
+
+Solutions:
+
+Import:
+
+```bash
+terraform import
+```
+
+or delete the existing resource.
+
+---
+
+## Argo CD cannot access Git repository
+
+Symptoms:
+
+```
+Failed to load target state
+failed to get git client
+```
+
+Possible causes:
+
+- Incorrect repository URL
+- Private repository without credentials
+- Invalid Git reference
+
+Validation:
+
+```bash
+kubectl get application \
+-n argocd
 ```
 
 ---
 
 # Design Principles
 
+This project follows:
+
 - Layered Terraform architecture
-- Independent Terraform state
-- Modular design
-- Infrastructure consumed through Remote State
+- Separate Terraform state per layer
+- Infrastructure/platform/application separation
 - Least privilege IAM
-- IRSA instead of node IAM permissions
-- Reusable Terraform modules
+- IRSA instead of node permissions
+- GitOps-based application delivery
 - Environment-specific configuration
+- Reproducible destroy/rebuild lifecycle
+
+---
+
+# Lessons Learned
+
+During development:
+
+- Recreating EKS changes the OIDC identity.
+- Terraform state separation simplifies recovery.
+- Existing AWS resources should be imported or removed before Terraform management.
+- AWS Load Balancer Controller does not create load balancers by itself.
+- Argo CD requires valid Git repository references.
+- GitOps repositories should remain separate from infrastructure repositories.
+- Application lifecycle ownership must be clear between Terraform and Argo CD.
 
 ---
 
 # Future Enhancements
 
-Potential platform components include:
+Potential platform additions:
 
 - Metrics Server
 - ExternalDNS
 - cert-manager
 - Cluster Autoscaler
 - Karpenter
-- ArgoCD
-- NGINX Ingress Controller
 - External Secrets Operator
 - Prometheus Operator
 - Grafana Operator
-
----
-
-# Lessons Learned
-
-During development of this project the following real-world scenarios were encountered and resolved:
-
-- EKS recreation changes the cluster OIDC provider
-- IRSA trust relationships must be updated after cluster recreation
-- `kubectl` must be reconfigured after EKS rebuilds
-- Helm provider syntax differs between provider versions
-- Helm timeout values are specified in seconds
-- Existing IAM resources can conflict with Terraform-managed resources
-- Installing the AWS Load Balancer Controller **does not** immediately create an AWS Application Load Balancer
-
-These troubleshooting experiences have been intentionally documented to help others deploying the project and to serve as operational runbooks for future maintenance.
+- Network Policies
+- Pod Security Standards
