@@ -32,6 +32,7 @@ The Applications layer currently manages:
 - Amazon ECR repositories
 - Application container image lifecycle support
 - Application-specific AWS resources
+- GitHub Actions OIDC access for publishing application images
 
 It does **not** directly deploy Kubernetes workloads.
 
@@ -134,6 +135,17 @@ ManagedBy   = Terraform
 ```
 
 ---
+
+# Recommendation CI/CD Identity
+
+The `dev` environment creates a GitHub OIDC provider and a dedicated IAM role
+for `lackito/ot-demo-apps` on the `main` branch. The role has only the ECR
+permissions needed to publish to the existing `recommendation` repository.
+
+After applying this layer, set the resulting
+`recommendation_github_actions_role_arn` output as the `AWS_ROLE_TO_ASSUME`
+secret in `ot-demo-apps`. The application workflow uses this short-lived OIDC
+identity to build, publish, and update GitOps; it has no Kubernetes credentials.
 
 # Current Application Images
 
