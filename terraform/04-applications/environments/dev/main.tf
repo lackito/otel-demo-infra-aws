@@ -1,8 +1,6 @@
 module "ecr_repositories" {
   source = "../../modules/ecr-repositories"
-
   repositories = local.ecr_repositories
-
   tags = local.common_tags
 }
 
@@ -19,4 +17,11 @@ module "recommendation_github_actions" {
   
   role_name          = "ot-demo-dev-recommendation-github-actions"
   tags               = local.common_tags
+}
+
+module "argocd_application" {
+  source = "../../modules/argocd-application"
+  gitops_repo = "https://github.com/lackito/ot-demo-gitops.git"
+  gitops_branch = "main"
+  gitops_path = "applications/otel-demo"
 }

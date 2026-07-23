@@ -1,0 +1,58 @@
+resource "kubernetes_manifest" "otel_demo" {
+
+  manifest = {
+
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+
+    metadata = {
+      name      = "otel-demo"
+      namespace = "argocd"
+    }
+
+    spec = {
+
+      project = "default"
+
+      sources = [
+
+        {
+          repoURL        = var.helm_repo
+          chart          = var.helm_chart
+          targetRevision = var.helm_chart_version
+
+          helm = {
+            valueFiles = [
+              var.values_file
+            ]
+          }
+        },
+
+        {
+          repoURL        = var.gitops_repo
+          targetRevision = var.gitops_branch
+          ref            = "values"
+        }
+
+      ]
+
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = "opentelemetry-demo"
+      }
+
+      syncPolicy = {
+
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+
+        syncOptions = [
+          "CreateNamespace=true"
+        ]
+      }
+    }
+
+  }
+}

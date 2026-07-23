@@ -67,7 +67,7 @@ It does **not** directly deploy Kubernetes workloads.
 │ ot-demo-gitops           │
 │                          │
 │ Helm Values              │
-│ ArgoCD Application        │
+│ ArgoCD Application       │
 └─────────────┬────────────┘
               |
               v
