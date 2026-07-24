@@ -2,7 +2,7 @@ data "terraform_remote_state" "platform" {
   backend = "s3"
 
   config = {
-    bucket = "20260710-tf-remote-state-bucket"
+    bucket = "lackito-tf-state"
     key    = "otel-demo-infra-aws/dev/platform.tfstate"
     region = var.aws_region
   }
