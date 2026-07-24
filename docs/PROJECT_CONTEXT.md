@@ -28,7 +28,7 @@ The objectives are to demonstrate:
 
 # Repositories
 
-## 1. ot-demo-tf
+## 1. otel-demo-infra-aws
 
 Infrastructure repository.
 
@@ -43,7 +43,7 @@ Responsible for:
 
 ---
 
-## 2. ot-demo-gitops
+## 2. otel-demo-gitops
 
 GitOps repository.
 
@@ -59,7 +59,7 @@ Argo CD owns workloads.
 
 ---
 
-## 3. ot-demo-apps
+## 3. otel-demo-apps
 
 Application source code.
 
@@ -278,7 +278,7 @@ Installed via Terraform.
 
 Application manifests stored in
 
-ot-demo-gitops
+otel-demo-gitops
 
 Application
 
@@ -304,7 +304,7 @@ Source 2
 
 GitHub
 
-ot-demo-gitops
+otel-demo-gitops
 
 Contains
 
@@ -352,7 +352,7 @@ Custom image built locally.
 
 Source
 
-ot-demo-apps/apps/recommendation
+otel-demo-apps/apps/recommendation
 
 Image
 
@@ -522,7 +522,7 @@ Terraform is NOT used to deploy workloads.
 
 # Repository Structure
 
-ot-demo-tf
+otel-demo-infra-aws
 
 01-bootstrap
 
@@ -538,7 +538,7 @@ PROJECT_CONTEXT.md
 
 ---
 
-ot-demo-gitops
+otel-demo-gitops
 
 argocd/
 
@@ -548,7 +548,7 @@ README.md
 
 ---
 
-ot-demo-apps
+otel-demo-apps
 
 recommendation
 
@@ -723,7 +723,7 @@ Docker Build
 Push Image to ECR
         |
         v
-Update ot-demo-gitops values.yaml
+Update otel-demo-gitops values.yaml
         |
         v
 Argo CD Sync

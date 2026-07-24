@@ -4,7 +4,7 @@ data "terraform_remote_state" "infrastructure" {
 
   config = {
     bucket = "20260710-tf-remote-state-bucket"
-    key    = "ot-demo-tf/dev/infrastructure.tfstate"
+    key    = "otel-demo-infra-aws/dev/infrastructure.tfstate"
     region = var.aws_region
   }
 

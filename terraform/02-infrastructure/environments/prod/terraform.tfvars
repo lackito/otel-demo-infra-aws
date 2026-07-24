@@ -1,6 +1,6 @@
 environment = "prod"
 
-cluster_name = "ot-demo-prod"
+cluster_name = "otel-demo-prod"
 
 node_groups = {
   default = {

@@ -64,7 +64,7 @@ It does **not** directly deploy Kubernetes workloads.
               |
               v
 ┌──────────────────────────┐
-│ ot-demo-gitops           │
+│ otel-demo-gitops           │
 │                          │
 │ Helm Values              │
 │ ArgoCD Application       │
@@ -139,12 +139,12 @@ ManagedBy   = Terraform
 # Recommendation CI/CD Identity
 
 The `dev` environment creates a GitHub OIDC provider and a dedicated IAM role
-for `lackito/ot-demo-apps` on the `main` branch. The role has only the ECR
+for `lackito/otel-demo-apps` on the `main` branch. The role has only the ECR
 permissions needed to publish to the existing `recommendation` repository.
 
 After applying this layer, set the resulting
 `recommendation_github_actions_role_arn` output as the `AWS_ROLE_TO_ASSUME`
-secret in `ot-demo-apps`. The application workflow uses this short-lived OIDC
+secret in `otel-demo-apps`. The application workflow uses this short-lived OIDC
 identity to build, publish, and update GitOps; it has no Kubernetes credentials.
 
 # Current Application Images
@@ -190,13 +190,13 @@ EKS Deployment
 Application deployment is managed by:
 
 ```
-ot-demo-gitops
+otel-demo-gitops
 ```
 
 Repository structure:
 
 ```
-ot-demo-gitops/
+otel-demo-gitops/
 
 ├── argocd/
 │   └── applications/

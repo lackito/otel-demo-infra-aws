@@ -213,7 +213,7 @@ Update kubeconfig.
 ```bash
 aws eks update-kubeconfig \
   --region us-east-1 \
-  --name ot-demo-dev
+  --name otel-demo-dev
 ```
 
 Verify deployment.
@@ -296,7 +296,7 @@ Update kubeconfig.
 ```bash
 aws eks update-kubeconfig \
 --region us-east-1 \
---name ot-demo-dev
+--name otel-demo-dev
 ```
 
 ---

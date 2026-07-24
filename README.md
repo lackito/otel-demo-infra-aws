@@ -57,7 +57,7 @@ Git is the source of truth.
               |                           |
               v                           v
 
-        Amazon ECR              ot-demo-gitops Repository
+        Amazon ECR              otel-demo-gitops Repository
 
                                           |
                                           |
@@ -87,13 +87,13 @@ The project is separated into independent repositories.
 ## Infrastructure Repository
 
 ```
-ot-demo-tf
+otel-demo-infra-aws
 ```
 
 Contains all Terraform code.
 
 ```
-ot-demo-tf
+otel-demo-infra-aws
 |
 ├── terraform
 │
@@ -111,13 +111,13 @@ ot-demo-tf
 ## GitOps Repository
 
 ```
-ot-demo-gitops
+otel-demo-gitops
 ```
 
 Contains Kubernetes desired state.
 
 ```
-ot-demo-gitops
+otel-demo-gitops
 
 ├── applications
 │   └── otel-demo
@@ -133,7 +133,7 @@ ot-demo-gitops
 ## Application Repository
 
 ```
-ot-demo-apps
+otel-demo-apps
 ```
 
 Contains application source code and CI/CD workflows.
@@ -141,7 +141,7 @@ Contains application source code and CI/CD workflows.
 Example:
 
 ```
-ot-demo-apps
+otel-demo-apps
 
 ├── apps
 │   └── recommendation
@@ -344,7 +344,7 @@ Update kubeconfig:
 ```bash
 aws eks update-kubeconfig \
 --region us-east-1 \
---name ot-demo-dev
+--name otel-demo-dev
 ```
 
 Check nodes:

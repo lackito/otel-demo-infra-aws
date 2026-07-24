@@ -59,7 +59,7 @@ Major accomplishments:
 Repository:
 
 ```text
-ot-demo-tf
+otel-demo-infra-aws
 ```
 
 Terraform layers created:
@@ -119,7 +119,7 @@ Current cluster:
 
 ```text
 Cluster:
-ot-demo-dev
+otel-demo-dev
 
 Region:
 us-east-1
@@ -235,7 +235,7 @@ Example image:
 Repository:
 
 ```text
-ot-demo-gitops
+otel-demo-gitops
 ```
 
 Purpose:
@@ -520,12 +520,12 @@ docs/
 ├── PROJECT_CONTEXT.md
 └── CHANGELOG.md
 
-ot-demo-tf/
+otel-demo-infra-aws/
 ├── terraform/
 │   ├── 02-infrastructure/
 │   ├── 03-platform/
 │   └── 04-applications/
 
-ot-demo-gitops/
+otel-demo-gitops/
 └── README.md
 ```
