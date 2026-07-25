@@ -1,531 +1,548 @@
+# CHANGELOG.md
+
 # Changelog
 
 All notable changes to this project are documented in this file.
 
-This project follows a milestone-based changelog approach rather than strict semantic versioning because infrastructure changes span multiple repositories and deployment layers.
+This project follows a milestone-based approach rather than strict semantic versioning during development.
 
 ---
 
-# [Unreleased]
+# Version 1.0.0
+## Complete AWS DevOps / GitOps Implementation
 
-## Planned
+Release Date: July 2026
 
-### CI/CD Automation
+This release represents the completion of the first major milestone of the project.
 
-- Create GitHub Actions workflow for application builds.
-- Build Docker images automatically.
-- Push images to Amazon ECR.
-- Update GitOps repository image references.
-- Allow Argo CD to automatically deploy updated versions.
-
-### Security Enhancements
-
-Planned improvements:
-
-- Container vulnerability scanning.
-- Software Bill of Materials (SBOM) generation.
-- Image signing.
-- Security policy enforcement.
-
-### Application Improvements
-
-Planned:
-
-- Integrate Product Catalog service.
-- Integrate Ad service.
-- Validate additional OpenTelemetry Demo components.
-- Establish promotion workflow between environments.
+The project now demonstrates a complete production-style DevOps workflow using Terraform, Amazon EKS, Argo CD, GitHub Actions, GitOps, and Amazon ECR.
 
 ---
 
-# [0.1.0] - Initial Platform Foundation
+# Highlights
 
-## Overview
+✅ Layered Terraform architecture
 
-Established the foundational AWS, Kubernetes, Terraform, and GitOps architecture for the OpenTelemetry Demo deployment.
+✅ Amazon EKS deployment
 
-Major accomplishments:
+✅ GitOps with Argo CD
 
-- Created layered Terraform architecture.
-- Provisioned Amazon EKS infrastructure.
-- Installed Kubernetes platform components.
-- Implemented Argo CD GitOps workflow.
-- Successfully deployed Recommendation service.
+✅ GitHub Actions CI/CD
+
+✅ GitHub OIDC authentication
+
+✅ Amazon ECR integration
+
+✅ Automated image promotion
+
+✅ End-to-end automated deployment
 
 ---
 
-# Infrastructure Layer
+# Repository Restructuring
 
-Repository:
+Repository names standardized.
 
-```text
+Renamed
+
+```
+ot-demo-tf
+```
+
+to
+
+```
 otel-demo-infra-aws
 ```
 
-Terraform layers created:
+Repository layout finalized.
 
-```text
-01-bootstrap
-02-infrastructure
-03-platform
-04-applications
 ```
-
----
-
-## 01-bootstrap
-
-Implemented Terraform backend foundation.
-
-Created:
-
-- Amazon S3 Terraform state storage.
-- DynamoDB state locking.
-
-Purpose:
-
-- Remote Terraform state management.
-- Safe team collaboration.
-- State consistency.
-
----
-
-# 02-infrastructure
-
-## Amazon VPC
-
-Created AWS networking foundation:
-
-- VPC.
-- Public subnets.
-- Private subnets.
-- Route tables.
-- Internet Gateway.
-- NAT Gateway.
-
----
-
-## Amazon EKS
-
-Provisioned:
-
-- Amazon EKS cluster.
-- Managed node groups.
-- IAM roles.
-- Kubernetes API access.
-- OIDC provider.
-
-Current cluster:
-
-```text
-Cluster:
-otel-demo-dev
-
-Region:
-us-east-1
-```
-
----
-
-## Terraform Remote State
-
-Implemented dependency flow:
-
-```text
-02-infrastructure
-        |
-        v
-03-platform
-        |
-        v
-04-applications
-```
-
-Platform and application layers consume infrastructure outputs through Terraform remote state.
-
----
-
-# 03-platform
-
-## AWS Load Balancer Controller
-
-Implemented Kubernetes AWS integration.
-
-Created:
-
-- IAM Policy.
-- IAM Role.
-- IAM Role Policy Attachment.
-- Kubernetes Service Account.
-- IRSA configuration.
-- Helm deployment.
-
-Purpose:
-
-Allow Kubernetes workloads to provision AWS load balancing resources.
-
-Architecture:
-
-```text
-Kubernetes Ingress
-        |
-        v
-AWS Load Balancer Controller
-        |
-        v
-AWS ALB/NLB
-```
-
----
-
-## Argo CD Installation
-
-Added GitOps deployment capability.
-
-Installed:
-
-- Argo CD Helm chart.
-
-Namespace:
-
-```text
-argocd
-```
-
-Configuration:
-
-- ClusterIP service.
-- Insecure development mode.
-- Port-forward access.
-
-Purpose:
-
-Move Kubernetes application ownership from Terraform to GitOps.
-
----
-
-# 04-applications
-
-## Amazon ECR
-
-Implemented application container registry management.
-
-Created:
-
-```text
-recommendation
-```
-
-Repository configuration:
-
-- Terraform managed.
-- Image scanning enabled.
-- Environment tagging applied.
-
-Example image:
-
-```text
-123456789012.dkr.ecr.us-east-1.amazonaws.com/recommendation:dev
-```
-
----
-
-# GitOps Repository
-
-Repository:
-
-```text
+otel-demo-infra-aws
+otel-demo-apps
 otel-demo-gitops
 ```
 
-Purpose:
+Infrastructure repository now clearly represents the AWS implementation while allowing future local or cloud-specific variants.
 
-Store Kubernetes desired state.
+---
 
-Created:
+# Documentation
 
-```text
-argocd/
-└── applications/
-    └── otel-demo.yaml
+Added
 
+- PROJECT_CONTEXT.md
+- CHANGELOG.md
+
+Updated
+
+- Root README
+- 02-infrastructure README
+- 03-platform README
+- 04-applications README
+- otel-demo-gitops README
+
+Created
+
+- PROJECT_WALKTHROUGH.md
+
+Documentation now explains:
+
+- architecture
+- deployment flow
+- GitOps workflow
+- CI/CD pipeline
+- infrastructure layering
+- troubleshooting
+- lessons learned
+
+---
+
+# Terraform
+
+Completed layered architecture.
+
+```
+01-bootstrap
+
+↓
+
+02-infrastructure
+
+↓
+
+03-platform
+
+↓
+
+04-applications
+```
+
+Each layer now maintains independent Terraform state.
+
+---
+
+# Bootstrap
+
+Implemented
+
+- Amazon S3 backend
+- Versioning
+- Encryption
+- Public access block
+
+Migrated from DynamoDB locking to Terraform native S3 lock files.
+
+Backend now uses:
+
+```
+use_lockfile = true
+```
+
+Simplifying backend infrastructure.
+
+---
+
+# Infrastructure
+
+Completed
+
+- VPC
+- Public Subnets
+- Private Subnets
+- Internet Gateway
+- NAT Gateway
+- Route Tables
+- Amazon EKS
+- Managed Node Groups
+- IAM Roles
+- OIDC Provider
+
+Published remote-state outputs consumed by downstream layers.
+
+---
+
+# Platform
+
+Implemented
+
+AWS Load Balancer Controller
+
+Implemented IRSA
+
+Installed Argo CD
+
+Added Terraform-managed Argo CD Application registration.
+
+Terraform now automatically creates:
+
+```
+Application
+otel-demo
+```
+
+inside the cluster.
+
+---
+
+# Applications
+
+Created dedicated applications layer.
+
+Current AWS resources:
+
+Amazon ECR
+
+Repositories
+
+- recommendation
+
+Kubernetes workloads intentionally remain outside Terraform ownership.
+
+---
+
+# GitOps
+
+Completed repository structure.
+
+```
 applications/
 └── otel-demo/
     └── values.yaml
+
+argocd/
+└── applications/
+    └── otel-demo.yaml
+```
+
+Argo CD now watches
+
+```
+applications/otel-demo
+```
+
+instead of the repository root.
+
+Desired state is fully Git-driven.
+
+---
+
+# GitHub Actions
+
+Implemented production-style deployment pipeline.
+
+Workflow
+
+```
+recommendation-release.yaml
+```
+
+Pipeline
+
+```
+Commit
+
+↓
+
+Build Docker Image
+
+↓
+
+Authenticate using GitHub OIDC
+
+↓
+
+Push Image to Amazon ECR
+
+↓
+
+Clone GitOps Repository
+
+↓
+
+Update values.yaml
+
+↓
+
+Commit
+
+↓
+
+Push
+
+↓
+
+Argo CD Sync
+
+↓
+
+Deploy
 ```
 
 ---
 
-## Argo CD Application
+# Authentication
 
-Implemented:
+AWS authentication migrated to GitHub OIDC.
 
-- Helm chart source from OpenTelemetry repository.
-- Git repository value overrides.
-- Automated synchronization.
-- Self-healing.
-- Pruning.
+Benefits
 
-Deployment flow:
+- No long-lived AWS credentials
+- Short-lived credentials
+- Least privilege
+- Production best practice
 
-```text
-Git Repository
-       |
-       v
-Argo CD
-       |
-       v
-Amazon EKS
+GitOps repository access implemented using a fine-grained GitHub Personal Access Token.
+
+---
+
+# Amazon ECR
+
+Created dedicated repository.
+
 ```
+recommendation
+```
+
+Recommendation service now publishes uniquely tagged container images using the Git commit SHA.
 
 ---
 
 # Recommendation Service
 
-## Deployment Validation
+Successfully customized.
 
-Successfully validated:
+Implemented
 
-- Docker image creation.
-- ECR push.
-- Kubernetes deployment.
-- Argo CD synchronization.
+- Docker build
+- Amazon ECR publishing
+- GitOps image promotion
+- Automatic Kubernetes deployment
 
-Application image:
-
-```text
-recommendation:dev
-```
-
-Deployment path:
-
-```text
-Source Code
-      |
-      v
-Docker Build
-      |
-      v
-Amazon ECR
-      |
-      v
-GitOps Values
-      |
-      v
-Argo CD
-      |
-      v
-EKS
-```
+End-to-end deployment validated successfully.
 
 ---
 
-# Important Architecture Decisions
+# Argo CD
 
-## Terraform vs Argo CD Ownership
+Terraform now installs
 
-Decision:
+- Argo CD
+- Argo CD Application
 
-Terraform manages:
+Automatic sync enabled
 
-- AWS resources.
-- Kubernetes platform components.
+- Self Heal
+- Prune
+- CreateNamespace
 
-Argo CD manages:
-
-- Kubernetes applications.
-
-Reason:
-
-Avoid multiple tools managing the same Kubernetes resources.
+Validated successful synchronization from GitOps repository to Kubernetes.
 
 ---
 
-## Product Catalog Decision
+# Kubernetes
 
-The course implementation was reviewed and intentionally deferred.
+Namespaces
 
-The course version uses:
+- kube-system
+- argocd
+- opentelemetry-demo
 
-```text
-products/products.json
-```
-
-The OpenTelemetry Demo architecture expects:
-
-```text
-PostgreSQL-backed product catalog
-```
-
-Decision:
-
-Do not deploy until implementation matches the target architecture.
+Recommendation service successfully deployed through GitOps.
 
 ---
 
-## Ad Service Decision
+# Major Architectural Decisions
 
-Deferred.
+Terraform owns
 
-Priority remains:
+- AWS resources
+- Platform components
+- Argo CD installation
+- Argo CD Application registration
 
-1. Recommendation service.
-2. CI/CD automation.
-3. GitOps workflow.
-4. Additional applications.
+Argo CD owns
+
+- Kubernetes workloads
+
+Applications remain cloud-agnostic.
+
+Infrastructure remains AWS-specific.
+
+GitOps repository remains reusable.
 
 ---
 
-# Lessons Learned
+# Troubleshooting & Lessons Learned
 
-## EKS Recreation
+Resolved
 
-Destroying and recreating EKS changes:
+## OIDC recreation
 
-- Cluster identity.
-- OIDC provider.
-
-Impact:
+Destroying and recreating EKS changes the OIDC provider.
 
 IRSA trust relationships must be recreated.
 
 ---
 
-## Terraform Resource Conflicts
+## kubectl configuration
 
-Manually created AWS resources cause conflicts:
-
-Examples:
-
-```text
-RepositoryAlreadyExistsException
-EntityAlreadyExists
-```
-
-Solution:
-
-Either:
-
-- Import into Terraform state.
-- Delete and allow Terraform ownership.
+Recreated EKS clusters require kubeconfig updates.
 
 ---
 
-## Helm Provider Changes
+## Helm
 
-Provider versions affect:
+Timeout values use seconds.
 
-- Syntax.
-- Resource behavior.
-- Timeout handling.
+---
 
-Current providers:
+## IAM
 
-```hcl
-aws        ~> 6.0
-kubernetes ~> 2.38
-helm       ~> 3.0
+Existing resources can conflict with Terraform-managed resources.
+
+---
+
+## Argo CD
+
+Healthy Application does not necessarily mean workloads exist.
+
+Root cause:
+
+Application pointed to the wrong GitOps path.
+
+Correct path:
+
+```
+applications/otel-demo
 ```
 
 ---
 
-## GitOps Repository Access
+## GitOps
 
-Argo CD requires:
+Updating GitOps desired state does not deploy images unless:
 
-- Correct repository URL.
-- Authentication for private repositories.
-
-Public repository access simplified initial setup.
+- Image exists in Amazon ECR
+- Argo CD detects repository change
+- Application watches the correct directory
 
 ---
 
-# Current Project Status
+## Recommendation deployment
 
-Completed:
+ImagePullBackOff observed when ECR repository was empty.
 
-✅ Terraform backend  
-✅ AWS infrastructure  
-✅ Amazon EKS  
-✅ Kubernetes platform  
-✅ AWS Load Balancer Controller  
-✅ IRSA  
-✅ Amazon ECR  
-✅ Argo CD  
-✅ GitOps repository  
-✅ Recommendation service deployment  
+Resolved by executing GitHub Actions pipeline.
 
-Current state:
+---
 
-```text
-Infrastructure:
-READY
+## Terraform backend
 
-Platform:
-READY
+Learned Terraform backend migration process.
 
-GitOps:
-READY
+Determined migration unnecessary for this project because infrastructure is intentionally destroyed between work sessions.
 
-Applications:
-PARTIAL
+---
+
+# Project Philosophy
+
+Infrastructure is intentionally disposable.
+
+Every development session validates:
+
+- Terraform
+- GitOps
+- Argo CD
+- GitHub Actions
+- Documentation
+
+Destroying and rebuilding the environment continuously verifies Infrastructure as Code completeness.
+
+---
+
+# Current Status
+
+Infrastructure
+
+✅ Complete
+
+Platform
+
+✅ Complete
+
+GitOps
+
+✅ Complete
+
+CI/CD
+
+✅ Complete
+
+Recommendation Service
+
+✅ Complete
+
+End-to-End Deployment
+
+✅ Complete
+
+---
+
+# Deferred Work
+
+Application customization
+
+- Product Catalog
+- Ad Service
+
+Platform enhancements
+
+- cert-manager
+- ExternalDNS
+- HTTPS
+- Karpenter
+- External Secrets
+- Metrics Server
+- Monitoring improvements
+
+---
+
+# Next Milestone (Version 1.1)
+
+Local Kubernetes implementation.
+
+Target repository
+
+```
+otel-demo-local
 ```
 
----
+Objectives
 
-# Next Development Phase
-
-## CI/CD Pipeline
-
-Target workflow:
-
-```text
-Developer Commit
-        |
-        v
-GitHub Actions
-        |
-        v
-Docker Build
-        |
-        v
-Amazon ECR
-        |
-        v
-Update GitOps Repository
-        |
-        v
-Argo CD Sync
-        |
-        v
-Amazon EKS
-```
+- kind cluster
+- Local Docker registry
+- Argo CD
+- GitHub Actions
+- Reuse existing application repository
+- Reuse existing GitOps repository
+- Compare AWS and Local implementations
+- Reinforce Kubernetes knowledge by rebuilding the platform without managed AWS services
 
 ---
 
-# Version History
+# Project Outcome
 
-| Version | Date | Description |
-|---|---|---|
-| 0.1.0 | 2026-07 | Initial AWS, Terraform, Kubernetes, Argo CD, and GitOps foundation |
+This project evolved from a guided course into a production-style DevOps portfolio project demonstrating:
 
----
-
-# Repository Documentation
-
-Related documentation:
-
-```text
-docs/
-├── PROJECT_CONTEXT.md
-└── CHANGELOG.md
-
-otel-demo-infra-aws/
-├── terraform/
-│   ├── 02-infrastructure/
-│   ├── 03-platform/
-│   └── 04-applications/
-
-otel-demo-gitops/
-└── README.md
-```
+- Infrastructure as Code
+- Kubernetes
+- GitOps
+- CI/CD
+- Cloud Infrastructure
+- Secure Authentication
+- Container Registries
+- Automated Deployments
+- Operational Troubleshooting
+- Production Architecture
+- Documentation and Knowledge Transfer

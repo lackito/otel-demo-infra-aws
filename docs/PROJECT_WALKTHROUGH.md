@@ -1,340 +1,33 @@
-# Simple Project Walkthrough
+# PROJECT_WALKTHROUGH.md
 
-## The Big Picture
+# OpenTelemetry Demo AWS Project Walkthrough
 
-At a high level, this project automates the entire path from writing code to running it in Kubernetes.
+This document explains the project from a high level.
 
-```text
-Developer
-    │
-    │ git push
-    ▼
-GitHub Actions
-    │
-    │ builds Docker image
-    ▼
-Amazon ECR
-    │
-    │ updates GitOps repository
-    ▼
-Argo CD
-    │
-    │ deploys changes
-    ▼
-Amazon EKS
-    │
-    ▼
-Running application
+It intentionally avoids implementation details and instead focuses on **what each phase is trying to accomplish**.
+
+If you understand this document, you'll understand the overall architecture.
+
+---
+
+# The Big Picture
+
+Our goal is **not simply to run the OpenTelemetry Demo.**
+
+Our goal is to build a production-style DevOps platform where:
+
+- Infrastructure is managed with Terraform.
+- Applications are built automatically.
+- Kubernetes deployments happen automatically.
+- Git becomes the single source of truth.
+
+Instead of manually deploying applications, everything happens automatically.
+
+---
+
+# Overall Architecture
+
 ```
-
-Terraform builds all of the infrastructure that makes this workflow possible.
-
----
-
-# 02 - Infrastructure
-
-## Question it answers
-
-> Where does my application run?
-
-Think of this layer as building an empty office building.
-
-Before anyone can work, you need:
-
-- Land
-- Roads
-- Electricity
-- The building itself
-
-Terraform creates:
-
-- VPC
-- Public Subnets
-- Private Subnets
-- Internet Gateway
-- NAT Gateway
-- Route Tables
-- Security Groups
-- Amazon EKS Cluster
-- Worker Nodes
-
-At the end of this layer you have:
-
-> An empty Kubernetes cluster waiting for applications.
-
-No applications exist yet.
-
----
-
-# 03 - Platform
-
-## Question it answers
-
-> What shared tools does the Kubernetes cluster need?
-
-Imagine the office building is finished.
-
-Now you install:
-
-- Elevators
-- Wi-Fi
-- Security cameras
-- Badge readers
-
-These are shared services that every application uses.
-
-In our project this layer installs:
-
-- AWS Load Balancer Controller
-- IAM Role for Service Accounts (IRSA)
-
-The Load Balancer Controller allows Kubernetes to automatically create AWS Load Balancers whenever an application exposes an Ingress or LoadBalancer Service.
-
-At the end of this layer you have:
-
-- Kubernetes Cluster
-- Shared Platform Services
-
-Still...
-
-No business applications.
-
----
-
-# 04 - Applications
-
-## Question it answers
-
-> How do applications get into Kubernetes?
-
-Originally Terraform installed the OpenTelemetry Demo directly.
-
-Now the architecture is much cleaner.
-
-Terraform installs:
-
-- Amazon ECR repositories
-- GitHub Actions IAM Role
-- Argo CD
-- Argo CD Application
-
-Terraform **does not deploy the application**.
-
-Instead, Terraform tells Argo CD:
-
-> "Watch this Git repository."
-
-After that, Argo CD takes over.
-
----
-
-# GitOps Repository
-
-The GitOps repository is the **desired state** of the cluster.
-
-Think of it as the recipe book.
-
-It describes exactly what should be running.
-
-Example:
-
-```text
-Recommendation image:
-abc123
-
-Grafana:
-enabled
-
-Jaeger:
-enabled
-
-Collector:
-configured
-```
-
-Argo CD continuously compares Kubernetes against this repository.
-
-If they are different...
-
-Argo CD fixes Kubernetes automatically.
-
----
-
-# GitHub Actions
-
-## Question it answers
-
-> How do I publish a new version?
-
-When code is pushed:
-
-1. Build Docker image
-2. Push image to Amazon ECR
-3. Update `applications/otel-demo/values.yaml` in the GitOps repository
-4. Commit and push the GitOps repository
-
-GitHub Actions **never talks directly to Kubernetes**.
-
-It only updates Git.
-
----
-
-# Argo CD
-
-Argo CD continuously asks:
-
-> "Has the GitOps repository changed?"
-
-If yes:
-
-- Pull latest configuration
-- Compare desired state
-- Synchronize Kubernetes
-
-Nobody runs:
-
-```bash
-kubectl apply
-```
-
-Nobody runs:
-
-```bash
-helm upgrade
-```
-
-Everything happens automatically.
-
----
-
-# Putting It Together
-
-## 02 Infrastructure
-
-Build the restaurant.
-
-- Building
-- Kitchen
-- Electricity
-- Parking lot
-
----
-
-## 03 Platform
-
-Install the shared equipment.
-
-- Stove
-- Freezer
-- Security system
-- Internet
-
----
-
-## 04 Applications
-
-Hire the restaurant manager.
-
-The manager (Argo CD) receives one instruction:
-
-> Follow the recipe book.
-
----
-
-## GitOps Repository
-
-The recipe book says:
-
-```text
-Today's recipe:
-
-Recommendation image:
-abc123
-
-Grafana:
-enabled
-
-Jaeger:
-enabled
-```
-
----
-
-## GitHub Actions
-
-The chef invents a better recipe.
-
-Instead of walking into the kitchen...
-
-The chef updates the recipe book.
-
----
-
-## Argo CD
-
-The manager notices the recipe changed.
-
-The manager tells the kitchen:
-
-> Start using the new recipe.
-
-The developer never walks into the kitchen.
-
-The developer only edits the recipe.
-
----
-
-# Old Way vs Modern GitOps
-
-## Traditional Deployment
-
-```text
-Developer
-    │
-    ▼
-kubectl apply
-    │
-    ▼
-Cluster
-```
-
-The developer changes the cluster directly.
-
----
-
-## GitOps Deployment
-
-```text
-Developer
-    │
-    ▼
-Git Push
-    │
-    ▼
-GitHub Actions
-    │
-    ▼
-Amazon ECR
-    │
-    ▼
-GitOps Repository
-    │
-    ▼
-Argo CD
-    │
-    ▼
-Amazon EKS
-```
-
-Git becomes the **single source of truth**.
-
-Nobody changes Kubernetes manually.
-
----
-
-# Final Architecture
-
-```text
 Terraform
 │
 ├── Creates AWS Infrastructure
@@ -345,7 +38,7 @@ Terraform
 │
 ├── Installs Argo CD
 │
-└── Registers GitOps Application
+└── Registers Argo CD Application
           │
           ▼
 GitHub Actions
@@ -363,67 +56,220 @@ Argo CD
 Amazon EKS
           │
           ▼
-Recommendation Service
+Running OpenTelemetry Demo
+```
+
+Each tool has exactly one responsibility.
+
+---
+
+# Step 1 - Bootstrap
+
+Terraform creates the place where Terraform stores its own state.
+
+Think of this as creating Terraform's notebook.
+
+It contains:
+
+- S3 Bucket
+- Versioning
+- Encryption
+- Native Terraform lock file support
+
+Nothing else is created yet.
+
+---
+
+# Step 2 - Infrastructure
+
+Now Terraform builds the AWS environment.
+
+Think of this as building an empty neighborhood.
+
+Terraform creates:
+
+- VPC
+- Subnets
+- Internet Gateway
+- NAT Gateway
+- Route Tables
+- Amazon EKS Cluster
+- Worker Nodes
+- IAM Roles
+- OIDC Provider
+
+At this point...
+
+We have a Kubernetes cluster.
+
+But the cluster is empty.
+
+No applications exist.
+
+---
+
+# Step 3 - Platform
+
+Now we install software **inside** Kubernetes.
+
+Think of this as installing the operating system for our neighborhood.
+
+In our project this layer installs:
+
+- AWS Load Balancer Controller
+- IAM Roles for Service Accounts (IRSA)
+- Argo CD
+- Registers the Argo CD Application
+
+The AWS Load Balancer Controller allows Kubernetes to automatically create AWS Load Balancers whenever an application exposes an Ingress or LoadBalancer Service.
+
+Argo CD is our GitOps engine.
+
+Terraform installs Argo CD and tells it **which Git repository to watch**.
+
+At the end of this layer we have:
+
+- Kubernetes Cluster
+- Shared Platform Services
+- Argo CD ready to deploy applications automatically
+
+Still...
+
+No business applications are running yet.
+
+---
+
+# Step 4 - Applications
+
+This layer creates only the AWS resources required by our applications.
+
+Currently it creates:
+
+- Amazon ECR repositories
+
+Terraform does **not** deploy Kubernetes workloads.
+
+Terraform also does **not** install Argo CD.
+
+Those responsibilities belong to the Platform layer.
+
+After this layer finishes:
+
+GitHub Actions has somewhere to publish container images.
+
+---
+
+# GitHub Actions
+
+This is where our application deployment begins.
+
+Suppose we modify the Recommendation service.
+
+We push code.
+
+GitHub Actions automatically runs.
+
+GitHub Actions:
+
+- Builds the Docker image
+- Pushes the image to Amazon ECR
+- Updates the GitOps repository
+
+Notice something important:
+
+GitHub Actions **never talks directly to Kubernetes**.
+
+It only:
+
+- Builds software
+- Publishes images
+- Updates Git
+
+That's all.
+
+---
+
+# GitOps Repository
+
+This repository represents the desired state of Kubernetes.
+
+Think of it as the blueprint for the cluster.
+
+Example:
+
+```
+applications/
+└── otel-demo/
+    └── values.yaml
+```
+
+GitHub Actions updates:
+
+```
+values.yaml
+```
+
+changing
+
+```
+tag: abc123
+```
+
+to
+
+```
+tag: def456
+```
+
+Nothing is deployed yet.
+
+Git simply records what Kubernetes *should* be running.
+
+---
+
+# Argo CD
+
+Argo CD constantly watches the GitOps repository.
+
+When it notices a Git change:
+
+It compares
+
+Git
+
+vs
+
+Kubernetes.
+
+If they differ...
+
+Argo CD updates Kubernetes automatically.
+
+This is GitOps.
+
+Nobody manually runs:
+
+```
+kubectl apply
 ```
 
 ---
 
-# The Three Questions
+# Amazon EKS
 
-Everything in this project answers one of these three questions:
+Kubernetes receives the new deployment.
 
-### 1. Where does my application run?
+The Recommendation pod is recreated.
 
-Answered by:
+The new image is pulled from Amazon ECR.
 
-**02 - Infrastructure**
+Traffic begins flowing to the new version.
 
----
-
-### 2. What does Kubernetes need before applications can run?
-
-Answered by:
-
-**03 - Platform**
+Deployment complete.
 
 ---
 
-### 3. How do new versions get deployed automatically?
+# Complete Deployment Flow
 
-Answered by:
-
-**04 - Applications + GitHub Actions + GitOps + Argo CD**
-
----
-
-Once these three layers are in place, the deployment process becomes very simple:
-
-```text
-Write code
-    │
-    ▼
-git push
-    │
-    ▼
-GitHub Actions builds image
-    │
-    ▼
-Push image to ECR
-    │
-    ▼
-Update GitOps repository
-    │
-    ▼
-Argo CD detects change
-    │
-    ▼
-Deploy new version to Kubernetes
 ```
-
-No manual deployments.
-
-No manual `kubectl apply`.
-
-No manual Helm commands.
-
-Everything flows automatically from Git.
+Developer
