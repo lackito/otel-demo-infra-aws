@@ -142,10 +142,11 @@ The `dev` environment creates a GitHub OIDC provider and a dedicated IAM role
 for `lackito/otel-demo-apps` on the `main` branch. The role has only the ECR
 permissions needed to publish to the existing `recommendation` repository.
 
-After applying this layer, set the resulting
-`recommendation_github_actions_role_arn` output as the `AWS_ROLE_TO_ASSUME`
-secret in `otel-demo-apps`. The application workflow uses this short-lived OIDC
-identity to build, publish, and update GitOps; it has no Kubernetes credentials.
+The AWS-specific application workflow references the resulting non-sensitive
+role ARN directly. The `recommendation_github_actions_role_arn` output can be
+used to verify that workflow configuration. The workflow uses this short-lived
+OIDC identity to build, publish, and update GitOps; it has no Kubernetes
+credentials.
 
 The IAM trust policy restricts GitHub's OIDC token to:
 
@@ -155,8 +156,8 @@ sub = repo:lackito/otel-demo-apps:ref:refs/heads/main
 ```
 
 If GitHub Actions reports `Not authorized to perform
-sts:AssumeRoleWithWebIdentity`, apply this Terraform layer and confirm that the
-`AWS_ROLE_TO_ASSUME` repository secret exactly matches:
+sts:AssumeRoleWithWebIdentity`, apply this Terraform layer and confirm that its
+role output matches the role ARN configured in the application workflow:
 
 ```bash
 terraform output -raw recommendation_github_actions_role_arn
