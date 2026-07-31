@@ -147,6 +147,21 @@ After applying this layer, set the resulting
 secret in `otel-demo-apps`. The application workflow uses this short-lived OIDC
 identity to build, publish, and update GitOps; it has no Kubernetes credentials.
 
+The IAM trust policy restricts GitHub's OIDC token to:
+
+```text
+aud = sts.amazonaws.com
+sub = repo:lackito/otel-demo-apps:ref:refs/heads/main
+```
+
+If GitHub Actions reports `Not authorized to perform
+sts:AssumeRoleWithWebIdentity`, apply this Terraform layer and confirm that the
+`AWS_ROLE_TO_ASSUME` repository secret exactly matches:
+
+```bash
+terraform output -raw recommendation_github_actions_role_arn
+```
+
 # Current Application Images
 
 ## Recommendation Service

@@ -3,11 +3,9 @@ variable "ecr_repository_arn" {
   type        = string
 }
 
-variable "github_owner"           { type = string }
-variable "github_owner_id"        { type = string }
+variable "github_owner" { type = string }
 variable "github_repository_name" { type = string }
-variable "github_repository_id"   { type = string }
-variable "github_branch"          { type = string }
+variable "github_branch" { type = string }
 
 variable "role_name" {
   description = "Name of the IAM role for GitHub Actions."

@@ -1,6 +1,6 @@
 data "aws_iam_policy_document" "github_actions_assume_role" {
   statement {
-    effect  = "Allow"
+    effect = "Allow"
     actions = [
       "sts:AssumeRoleWithWebIdentity",
       "sts:TagSession"
@@ -21,7 +21,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repository_name}@${var.github_repository_id}:ref:refs/heads/${var.github_branch}"
+        "repo:${var.github_owner}/${var.github_repository_name}:ref:refs/heads/${var.github_branch}"
       ]
     }
   }
