@@ -148,11 +148,13 @@ used to verify that workflow configuration. The workflow uses this short-lived
 OIDC identity to build, publish, and update GitOps; it has no Kubernetes
 credentials.
 
-The IAM trust policy restricts GitHub's OIDC token to:
+This repository uses a customized GitHub OIDC subject containing immutable
+owner and repository IDs. The IAM trust policy therefore restricts GitHub's
+OIDC token to:
 
 ```text
 aud = sts.amazonaws.com
-sub = repo:lackito/otel-demo-apps:ref:refs/heads/main
+sub = repo:lackito@6595109/otel-demo-apps@1305341394:ref:refs/heads/main
 ```
 
 If GitHub Actions reports `Not authorized to perform

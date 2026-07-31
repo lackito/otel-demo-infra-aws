@@ -10,7 +10,9 @@ module "recommendation_github_actions" {
   ecr_repository_arn = module.ecr_repositories.repository_arns["recommendation"]
 
   github_owner           = "lackito"
+  github_owner_id        = "6595109"
   github_repository_name = "otel-demo-apps"
+  github_repository_id   = "1305341394"
   github_branch          = "main"
 
   role_name = "otel-demo-dev-recommendation-github-actions"
