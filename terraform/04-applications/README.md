@@ -128,7 +128,7 @@ Terraform manages:
 Example tags:
 
 ```text
-Project     = ot-demo
+Project     = otel-demo
 Environment = dev
 Layer       = applications
 ManagedBy   = Terraform

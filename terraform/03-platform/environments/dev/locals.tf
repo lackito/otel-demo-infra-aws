@@ -1,5 +1,5 @@
 locals {
-  project     = "ot-demo"
+  project     = "otel-demo"
   repository  = "otel-demo-infra-aws"
   environment = "dev"
   layer       = "platform"
