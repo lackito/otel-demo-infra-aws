@@ -1,31 +1,33 @@
 variable "helm_repo" {
-  default = "https://open-telemetry.github.io/opentelemetry-helm-charts"
+  description = "OpenTelemetry Helm chart repository."
+  type        = string
+  default     = "https://open-telemetry.github.io/opentelemetry-helm-charts"
 }
 
 variable "helm_chart" {
-  default = "opentelemetry-demo"
+  description = "OpenTelemetry Demo Helm chart name."
+  type        = string
+  default     = "opentelemetry-demo"
 }
 
 variable "helm_chart_version" {
-  default = "0.38.4"
-}
-
-variable "values_file" {
-  default = "$values/applications/otel-demo/values.yaml"
+  description = "Pinned OpenTelemetry Demo Helm chart version."
+  type        = string
+  default     = "0.38.4"
 }
 
 variable "gitops_repo" {
-  description = "GitOps repository containing application manifests"
+  description = "GitOps repository containing application manifests."
   type        = string
 }
 
 variable "gitops_branch" {
-  description = "GitOps branch"
+  description = "Git revision watched by Argo CD."
   type        = string
   default     = "main"
 }
 
 variable "gitops_path" {
-  description = "Application path inside GitOps repository"
+  description = "Application path inside the GitOps repository."
   type        = string
 }

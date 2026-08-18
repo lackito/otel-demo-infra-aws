@@ -23,7 +23,7 @@ resource "kubernetes_manifest" "otel_demo" {
 
           helm = {
             valueFiles = [
-              var.values_file
+              "$values/${var.gitops_path}/values.yaml"
             ]
           }
         },
@@ -49,7 +49,8 @@ resource "kubernetes_manifest" "otel_demo" {
         }
 
         syncOptions = [
-          "CreateNamespace=true"
+          "CreateNamespace=true",
+          "ServerSideApply=true",
         ]
       }
     }

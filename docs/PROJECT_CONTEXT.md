@@ -362,6 +362,9 @@ argocd/
     └── otel-demo.yaml
 ```
 
+The Terraform applications stage registers the Argo CD Application, while its
+declarative YAML definition remains documented in the GitOps repository.
+
 The Argo CD Application points directly at:
 
 ```

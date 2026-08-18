@@ -215,7 +215,6 @@ Repository structure:
 
 ```
 otel-demo-gitops/
-
 ├── argocd/
 │   └── applications/
 │       └── otel-demo.yaml
@@ -229,6 +228,10 @@ Argo CD consumes:
 
 - OpenTelemetry Demo Helm chart
 - Git-managed Helm values
+
+The Terraform module in this stage registers the Argo CD Application. Its
+declarative YAML definition also remains in the GitOps repository alongside
+the desired application state.
 
 Example image override:
 
