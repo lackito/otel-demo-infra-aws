@@ -1,513 +1,81 @@
-# OpenTelemetry Demo - AWS EKS GitOps Platform
+# OpenTelemetry Demo on AWS EKS
 
-A complete cloud-native DevOps implementation demonstrating modern infrastructure automation, Kubernetes deployment, CI/CD, and GitOps practices using AWS, Terraform, GitHub Actions, and Argo CD.
+An AWS platform engineering project that provisions infrastructure with
+**Terraform** and delivers the upstream **OpenTelemetry Demo** through
+**Helm, Argo CD, GitHub Actions, and Amazon ECR**.
 
-This project deploys the OpenTelemetry Demo application on Amazon EKS using a fully automated GitOps workflow.
+This repository owns AWS provisioning, platform services, and Argo CD
+Application registration. Application source and Kubernetes desired state live
+in separate repositories.
 
----
+## Engineering focus
 
-# Documentation
+- Separate Terraform state by lifecycle: backend, infrastructure, platform, and applications.
+- Provision networking, EKS, and IAM through reusable Terraform modules.
+- Install the AWS Load Balancer Controller with IAM Roles for Service Accounts (IRSA).
+- Authenticate GitHub Actions to AWS using OIDC for Recommendation image publishing.
+- Let Argo CD reconcile application releases from GitOps values rather than deploying from CI.
 
-- **README.md** — Project overview and architecture
-- **docs/PROJECT_WALKTHROUGH.md** — High-level explanation of how everything works
-- **docs/PROJECT_CONTEXT.md** — Complete project context for continuing development
-- **docs/CHANGELOG.md** — Major milestones and project history
+The demo application comes from OpenTelemetry. The work here focuses on its
+infrastructure, delivery automation, and operational boundaries.
 
----
+## Architecture
 
-# Project Overview
-
-The goal of this project is to demonstrate an enterprise-style deployment workflow:
-
-1. Infrastructure is created using Terraform.
-2. Kubernetes platform components are installed.
-3. Argo CD is configured to manage applications.
-4. Developers push application code.
-5. GitHub Actions builds and publishes container images.
-6. GitOps repositories are updated automatically.
-7. Argo CD detects changes and deploys workloads to Kubernetes.
-
-The Kubernetes cluster is never manually updated.
-
-Git is the source of truth.
-
----
-
-# Architecture
-
-```
-                         Developer
-
-                            |
-                            |
-                         git push
-
-                            |
-                            v
-
-                    GitHub Actions
-                            |
-                            |
-              +-------------+-------------+
-              |                           |
-              v                           v
-
-          Docker Build              GitOps Update
-
-              |                           |
-              v                           v
-
-        Amazon ECR              otel-demo-gitops Repository
-
-                                          |
-                                          |
-                                          v
-
-                                      Argo CD
-
-                                          |
-                                          |
-                                          v
-
-                                  Amazon EKS Cluster
-
-                                          |
-                                          |
-                                          v
-
-                              OpenTelemetry Demo Application
+```mermaid
+flowchart LR
+    A[Application source] --> B[GitHub Actions]
+    B --> C[Amazon ECR]
+    B --> D[GitOps values commit]
+    D --> E[Argo CD]
+    H[Upstream Helm chart] --> E
+    E --> F[EKS workloads]
+    C --> F
+    T[Terraform layers] --> G[AWS infrastructure and platform]
+    G --> E
 ```
 
----
-
-# Repository Structure
-
-The project is separated into independent repositories.
-
-## Infrastructure Repository
-
-```
-otel-demo-infra-aws
-```
-
-Contains all Terraform code.
-
-```
-otel-demo-infra-aws
-|
-├── terraform
-│
-├── 01-bootstrap
-│
-├── 02-infrastructure
-│
-├── 03-platform
-│
-└── 04-applications
-```
-
----
-
-## GitOps Repository
-
-```
-otel-demo-gitops
-```
-
-Contains Kubernetes desired state.
-
-```
-otel-demo-gitops
-
-├── applications
-│   └── otel-demo
-│       └── values.yaml
-│
-└── argocd
-    └── applications
-        └── otel-demo.yaml
-```
-
----
-
-## Application Repository
-
-```
-otel-demo-apps
-```
-
-Contains application source code and CI/CD workflows.
-
-Example:
-
-```
-otel-demo-apps
-
-├── apps
-│   └── recommendation
-│
-└── .github
-    └── workflows
-        └── recommendation-release.yaml
-```
-
----
-
-# Terraform Layers
-
-## 01 - Bootstrap
-
-Creates Terraform backend resources.
-
-Examples:
-
-- S3 Terraform state bucket
-- DynamoDB state locking
-
-Purpose:
-
-Provide centralized Terraform state management.
-
----
-
-# 02 - Infrastructure
-
-Creates AWS infrastructure.
-
-Responsibilities:
-
-- VPC
-- Networking
-- Subnets
-- Security Groups
-- Amazon EKS Cluster
-- Worker Nodes
-- IAM configuration
-
-Result:
-
-A running Kubernetes cluster.
-
----
-
-# 03 - Platform
-
-Installs shared Kubernetes platform services.
-
-Current components:
-
-- AWS Load Balancer Controller
-- IAM Role for Service Accounts (IRSA)
-- Helm-based Kubernetes deployments
-
-Purpose:
-
-Prepare Kubernetes for application workloads.
-
----
-
-# 04 - Applications
-
-Bootstraps application delivery.
-
-Responsibilities:
-
-- Create ECR repositories
-- Configure GitHub Actions IAM permissions
-- Install Argo CD
-- Register Argo CD Applications
-
-Argo CD manages application deployment.
-
----
-
-# GitOps Workflow
-
-## Application Development
-
-Developer changes code:
-
-```
-apps/recommendation
-```
-
-and pushes:
-
-```
-git push
-```
-
----
-
-## Continuous Integration
-
-GitHub Actions:
-
-1. Checks out source code
-2. Authenticates with AWS using OIDC
-3. Builds Docker image
-4. Pushes image to Amazon ECR
-5. Updates GitOps values file
-6. Commits GitOps change
-
-Example:
-
-Before:
-
-```yaml
-image:
-  tag: old-version
-```
-
-After:
-
-```yaml
-image:
-  tag: new-git-sha
-```
-
----
-
-## Continuous Deployment
-
-Argo CD detects the GitOps repository change.
-
-Argo CD:
-
-1. Pulls latest configuration
-2. Renders Helm chart
-3. Applies Kubernetes resources
-4. Maintains desired state
-
----
-
-# Technologies Used
-
-## Cloud
-
-- AWS
-- Amazon EKS
-- Amazon ECR
-- IAM
-- VPC
-
-## Infrastructure as Code
-
-- Terraform
-- Terraform Remote State
-- Terraform Modules
-
-## Kubernetes
-
-- Kubernetes
-- Helm
-- Argo CD
-
-## CI/CD
-
-- GitHub Actions
-- GitHub OIDC Authentication
-
-## Observability
-
-- OpenTelemetry Demo
-- Prometheus
-- Grafana
-- Jaeger
-
----
-
-# Deployment Process
-
-## Deploy Infrastructure
-
-Run Terraform layers in order:
-
-```
-02-infrastructure
-
-↓
-
-03-platform
-
-↓
-
-04-applications
-```
-
----
-
-## Verify EKS
-
-Update kubeconfig:
-
-```bash
-aws eks update-kubeconfig \
---region us-east-1 \
---name otel-demo-dev
-```
-
-Check nodes:
-
-```bash
-kubectl get nodes
-```
-
----
-
-## Verify Argo CD
-
-```bash
-kubectl get applications -n argocd
-```
-
-Expected:
-
-```
-NAME        SYNC STATUS   HEALTH STATUS
-
-otel-demo   Synced        Healthy
-```
-
----
-
-## Verify Application
-
-```bash
-kubectl get pods \
--n opentelemetry-demo
-```
-
-Expected:
-
-All services running.
-
----
-
-# Destroy Procedure
-
-Destroy in reverse order.
-
-```
-04-applications
-
-↓
-
-03-platform
-
-↓
-
-02-infrastructure
-
-↓
-
-01-bootstrap
-```
-
-Why?
-
-Higher layers depend on lower layers.
-
----
-
-# Important Design Decisions
-
-## GitOps over direct Kubernetes deployment
-
-Applications are not deployed using:
-
-```
-kubectl apply
-```
-
-or:
-
-```
-helm upgrade
-```
-
-Git is the source of truth.
-
----
-
-## Terraform manages infrastructure
-
-Terraform creates:
-
-- AWS resources
-- Kubernetes platform components
-- Argo CD registration
-
-Terraform does not manage application releases.
-
----
-
-## Argo CD manages applications
-
-Argo CD owns:
-
-- Helm rendering
-- Kubernetes synchronization
-- Application lifecycle
-
----
-
-## IRSA instead of node IAM permissions
-
-AWS permissions are attached to Kubernetes service accounts instead of worker nodes.
-
-Benefits:
-
-- Least privilege
-- Better security isolation
-- AWS recommended approach
-
----
-
-# Lessons Learned
-
-During development several real-world issues were encountered:
-
-- Terraform state must be separated by lifecycle layer
-- EKS recreation changes OIDC providers
-- kubectl contexts must be refreshed after cluster recreation
-- Helm provider versions affect syntax
-- Argo CD Applications require correct source configuration
-- A Git repository containing only values.yaml cannot deploy without a Helm chart source
-- Multi-source Argo CD Applications are required when combining external Helm charts with Git-managed values
-- GitHub Actions must update GitOps repositories, not Kubernetes directly
-
----
-
-# Future Improvements
-
-Possible enhancements:
-
-- Add production environment
-- Add ApplicationSet for multiple applications
-- Add automated testing stages
-- Add security scanning gates
-- Add Terraform CI validation
-- Add Helm chart customization
-- Add External Secrets Operator
-- Add cert-manager
-- Add Karpenter autoscaling
-- Add monitoring dashboards
-
----
-
-# Project Status
-
-Current implementation:
-
-✅ AWS infrastructure automated with Terraform  
-✅ Amazon EKS cluster deployed  
-✅ Kubernetes platform configured  
-✅ AWS Load Balancer Controller installed  
-✅ Argo CD installed  
-✅ OpenTelemetry Demo deployed through GitOps  
-✅ GitHub Actions builds and publishes images  
-✅ GitOps image promotion workflow working  
-✅ Argo CD automatically synchronizes deployments  
-
-The complete GitOps deployment pipeline is operational.
+CI builds and publishes an image, then updates the GitOps repository. Argo CD
+renders the chart with those values and reconciles the workloads. Terraform
+manages infrastructure and platform setup independently of application releases.
+
+## Terraform layers
+
+| Layer | Responsibility |
+|---|---|
+| [01-bootstrap](terraform/01-bootstrap/) | S3 state bucket with versioning, encryption, and public access blocking; downstream backends use S3 lockfiles |
+| [02-infrastructure](terraform/02-infrastructure/) | VPC, subnets, EKS, worker nodes, and cluster IAM/OIDC resources |
+| [03-platform](terraform/03-platform/) | AWS Load Balancer Controller with IRSA, and Argo CD |
+| [04-applications](terraform/04-applications/) | ECR repositories, GitHub Actions IAM permissions, and Argo CD Application registration |
+
+Start with the backend, then apply layers 02 → 03 → 04. Read the linked layer
+documentation and operations guide before provisioning; the configuration uses
+project-specific AWS and GitHub settings.
+
+## Documentation
+
+| Goal | Guide |
+|---|---|
+| Understand the complete delivery path | [Project walkthrough](docs/PROJECT_WALKTHROUGH.md) |
+| Review deployment, verification, teardown, and design decisions | [Operations guide](docs/OPERATIONS.md) |
+| Inspect infrastructure configuration | [Infrastructure guide](terraform/02-infrastructure/README.md) |
+| Inspect platform configuration | [Platform guide](terraform/03-platform/README.md) |
+| Inspect application registration and ECR | [Applications guide](terraform/04-applications/README.md) |
+| Continue development or review milestones | [Project context](docs/PROJECT_CONTEXT.md) and [changelog](docs/CHANGELOG.md) |
+
+## Implementation and verification
+
+The repository contains the four Terraform layers and the Recommendation
+release permissions. The project documentation records EKS deployment and
+GitOps delivery milestones. For a current deployment, verify EKS nodes, Argo CD
+sync/health, and application pods using the operations guide.
+
+For a release, compare the application workflow run, ECR image tag, GitOps
+commit, and deployed image. Recorded milestones do not establish current
+cluster health. Future improvements are listed in the operations guide.
+
+## Related repositories
+
+- [otel-demo-apps](https://github.com/lackito/otel-demo-apps): application source and release workflows.
+- [otel-demo-gitops](https://github.com/lackito/otel-demo-gitops): AWS Helm values and Argo CD desired state.
+- [otel-demo-local](https://github.com/lackito/otel-demo-local): local kind platform and validation tooling.
+- [otel-demo-gitops-local](https://github.com/lackito/otel-demo-gitops-local): local Helm values and Gateway resources.
