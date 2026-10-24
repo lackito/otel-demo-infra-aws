@@ -519,3 +519,30 @@ Potential additions:
 - SBOM generation
 - Application deployment approvals
 - Production environment support
+
+
+## Product Catalog and Ad publishers
+
+Layer 04 adds `product-catalog` and `ad` ECR repositories (immutable tags),
+plus one main-only GitHub OIDC publisher role per repository. Existing
+Recommendation, Checkout, and Frontend repositories are retained.
+`module.recommendation_github_actions` continues to own the account-wide
+GitHub OIDC provider at its original address. New publisher modules consume
+its ARN; they never create another provider. Existing resource addresses
+are unchanged, so no state move/import is required for this change.
+
+Publisher policies allow layer upload, PutImage, repository-scoped image
+inspection/pull (required by release verification), and GetAuthorizationToken
+on `*` as required by ECR. They grant no deployment, repository deletion, or
+cross-repository image permissions. New role ARNs are exposed by
+`service_github_actions_role_arns`. The existing Recommendation role receives
+the same repository-scoped inspection/pull additions.
+
+Validate with `terraform init -backend=false` and `terraform validate` in
+`environments/dev`. Before applying, initialize the real backend and review a
+saved plan: expect additive repositories and roles, and an in-place policy
+update; stop if existing ECR, role, or OIDC resources are replaced/deleted.
+Validation is not a cloud plan or proof of deployed infrastructure.
+Apply layer 04 before enabling apps release workflows. Those workflows publish
+full-SHA images and validate them before updating GitOps. Argo CD continues
+to own workloads; chart 0.38.4 and the Application source are unchanged.

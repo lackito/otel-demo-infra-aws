@@ -25,3 +25,17 @@ module "argocd_application" {
   gitops_branch = "main"
   gitops_path   = "applications/otel-demo"
 }
+
+module "service_github_actions" {
+  for_each               = toset(["product-catalog", "ad"])
+  source                 = "../../modules/github-actions-ecr-publisher"
+  oidc_provider_arn      = module.recommendation_github_actions.oidc_provider_arn
+  ecr_repository_arn     = module.ecr_repositories.repository_arns[each.key]
+  github_owner           = "lackito"
+  github_owner_id        = "6595109"
+  github_repository_name = "otel-demo-apps"
+  github_repository_id   = "1305341394"
+  github_branch          = "main"
+  role_name              = "otel-demo-dev-${each.key}-github-actions"
+  tags                   = local.common_tags
+}
