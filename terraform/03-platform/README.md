@@ -277,7 +277,7 @@ Update kubeconfig:
 ```bash
 aws eks update-kubeconfig \
 --region us-east-1 \
---name otel-demo-dev
+--name otel-demo-aws-dev
 ```
 
 ---
@@ -373,7 +373,7 @@ Amazon EKS
 The GitOps repository:
 
 ```
-otel-demo-gitops
+otel-demo-gitops-aws
 ```
 
 contains:

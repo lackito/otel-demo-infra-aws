@@ -60,7 +60,7 @@ Repository layout finalized.
 ```
 otel-demo-infra-aws
 otel-demo-apps
-otel-demo-gitops
+otel-demo-gitops-aws
 ```
 
 Infrastructure repository now clearly represents the AWS implementation while allowing future local or cloud-specific variants.
@@ -80,7 +80,7 @@ Updated
 - 02-infrastructure README
 - 03-platform README
 - 04-applications README
-- otel-demo-gitops README
+- otel-demo-gitops-aws README
 
 Created
 
@@ -515,7 +515,7 @@ Local Kubernetes implementation.
 Target repository
 
 ```
-otel-demo-local
+otel-demo-infra-kind
 ```
 
 Objectives

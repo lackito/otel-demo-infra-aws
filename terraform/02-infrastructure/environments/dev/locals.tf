@@ -2,7 +2,7 @@ locals {
   project      = "otel-demo"
   repository   = "otel-demo-infra-aws"
   layer        = "infrastructure"
-  cluster_name = "${local.project}-${var.environment}"
+  cluster_name = "${local.project}-aws-${var.environment}"
 
   common_tags = {
     Project     = local.project

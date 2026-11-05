@@ -15,13 +15,13 @@ module "recommendation_github_actions" {
   github_repository_id   = "1305341394"
   github_branch          = "main"
 
-  role_name = "otel-demo-dev-recommendation-github-actions"
+  role_name = "otel-demo-aws-dev-recommendation-github-actions"
   tags      = local.common_tags
 }
 
 module "argocd_application" {
   source        = "../../modules/argocd-application"
-  gitops_repo   = "https://github.com/lackito/otel-demo-gitops.git"
+  gitops_repo   = "https://github.com/lackito/otel-demo-gitops-aws.git"
   gitops_branch = "main"
   gitops_path   = "applications/otel-demo"
 }
@@ -36,6 +36,6 @@ module "service_github_actions" {
   github_repository_name = "otel-demo-apps"
   github_repository_id   = "1305341394"
   github_branch          = "main"
-  role_name              = "otel-demo-dev-${each.key}-github-actions"
+  role_name              = "otel-demo-aws-dev-${each.key}-github-actions"
   tags                   = local.common_tags
 }

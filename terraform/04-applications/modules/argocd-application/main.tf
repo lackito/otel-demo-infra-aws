@@ -6,7 +6,7 @@ resource "kubernetes_manifest" "otel_demo" {
     kind       = "Application"
 
     metadata = {
-      name      = "otel-demo"
+      name      = "otel-demo-aws"
       namespace = "argocd"
     }
 
@@ -22,6 +22,7 @@ resource "kubernetes_manifest" "otel_demo" {
           targetRevision = var.helm_chart_version
 
           helm = {
+            releaseName = "otel-demo"
             valueFiles = [
               "$values/${var.gitops_path}/values.yaml"
             ]
