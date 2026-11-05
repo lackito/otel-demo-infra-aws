@@ -52,7 +52,7 @@ Terraform layers:
 
 ---
 
-## 2. otel-demo-gitops
+## 2. otel-demo-gitops-aws
 
 GitOps repository.
 
@@ -106,7 +106,7 @@ Push to Amazon ECR
 Update GitOps values.yaml
     │
     ▼
-Commit to otel-demo-gitops
+Commit to otel-demo-gitops-aws
     │
     ▼
 Argo CD detects Git change
@@ -304,7 +304,7 @@ Installed through Terraform.
 GitOps repository
 
 ```
-otel-demo-gitops
+otel-demo-gitops-aws
 ```
 
 Application
@@ -322,7 +322,7 @@ applications/otel-demo
 Repository
 
 ```
-https://github.com/lackito/otel-demo-gitops.git
+https://github.com/lackito/otel-demo-gitops-aws.git
 ```
 
 Branch
@@ -347,7 +347,7 @@ Application registration is managed through Terraform using the Kubernetes provi
 Repository
 
 ```
-otel-demo-gitops
+otel-demo-gitops-aws
 ```
 
 Structure
@@ -688,7 +688,7 @@ Create a local Kubernetes implementation.
 Target repository
 
 ```
-otel-demo-local
+otel-demo-infra-kind
 ```
 
 Objectives

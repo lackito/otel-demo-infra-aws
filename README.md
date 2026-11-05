@@ -1,4 +1,4 @@
-# OpenTelemetry Demo on AWS EKS
+# otel-demo-infra-aws
 
 An AWS platform engineering project that provisions infrastructure with
 **Terraform** and delivers the upstream **OpenTelemetry Demo** through
@@ -76,6 +76,10 @@ cluster health. Future improvements are listed in the operations guide.
 ## Related repositories
 
 - [otel-demo-apps](https://github.com/lackito/otel-demo-apps): application source and release workflows.
-- [otel-demo-gitops](https://github.com/lackito/otel-demo-gitops): AWS Helm values and Argo CD desired state.
-- [otel-demo-local](https://github.com/lackito/otel-demo-local): local kind platform and validation tooling.
-- [otel-demo-gitops-local](https://github.com/lackito/otel-demo-gitops-local): local Helm values and Gateway resources.
+- [otel-demo-gitops-aws](https://github.com/lackito/otel-demo-gitops-aws): AWS Helm values and Argo CD desired state.
+- [otel-demo-infra-kind](https://github.com/lackito/otel-demo-infra-kind): local kind platform and validation tooling.
+- [otel-demo-gitops-kind](https://github.com/lackito/otel-demo-gitops-kind): local Helm values and Gateway resources.
+
+## Environment naming
+
+See the shared [naming and migration guide](https://github.com/lackito/otel-demo-apps/blob/main/docs/NAMING.md) for repository names, runtime identities, and the coordinated rename sequence.

@@ -64,7 +64,7 @@ It does **not** directly deploy Kubernetes workloads.
               |
               v
 ┌──────────────────────────┐
-│ otel-demo-gitops           │
+│ otel-demo-gitops-aws           │
 │                          │
 │ Helm Values              │
 │ ArgoCD Application       │
@@ -208,13 +208,13 @@ EKS Deployment
 Application deployment is managed by:
 
 ```
-otel-demo-gitops
+otel-demo-gitops-aws
 ```
 
 Repository structure:
 
 ```
-otel-demo-gitops/
+otel-demo-gitops-aws/
 ├── argocd/
 │   └── applications/
 │       └── otel-demo.yaml
@@ -546,3 +546,14 @@ Validation is not a cloud plan or proof of deployed infrastructure.
 Apply layer 04 before enabling apps release workflows. Those workflows publish
 full-SHA images and validate them before updating GitOps. Argo CD continues
 to own workloads; chart 0.38.4 and the Application source are unchanged.
+
+## AWS and kind naming migration
+
+The AWS Argo Application is `otel-demo-aws`, its GitOps source is
+`otel-demo-gitops-aws`, and publisher roles use `otel-demo-aws-dev-*`.
+These names assume the previous infrastructure was destroyed before migration.
+Terraform addresses remain stable, but applying this change to surviving old
+roles would replace their names; inspect the saved plan against real state.
+Keep the shared Helm release name `otel-demo`. See the
+[naming guide](https://github.com/lackito/otel-demo-apps/blob/main/docs/NAMING.md)
+for the coordinated repository rename and release configuration.

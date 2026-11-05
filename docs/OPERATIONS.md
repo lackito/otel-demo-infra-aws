@@ -59,7 +59,7 @@ Git is the source of truth.
               |                           |
               v                           v
 
-        Amazon ECR              otel-demo-gitops Repository
+        Amazon ECR              otel-demo-gitops-aws Repository
 
                                           |
                                           |
@@ -109,13 +109,13 @@ otel-demo-infra-aws
 ## GitOps Repository
 
 ```
-otel-demo-gitops
+otel-demo-gitops-aws
 ```
 
 Contains Kubernetes desired state.
 
 ```
-otel-demo-gitops
+otel-demo-gitops-aws
 
 ├── applications
 │   └── otel-demo
@@ -343,7 +343,7 @@ Update kubeconfig:
 ```bash
 aws eks update-kubeconfig \
 --region us-east-1 \
---name otel-demo-dev
+--name otel-demo-aws-dev
 ```
 
 Check nodes:
