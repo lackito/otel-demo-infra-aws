@@ -14,7 +14,9 @@ locals {
       image_tag_mutability = "IMMUTABLE"
     }
 
-    frontend = {}
+    frontend        = {}
+    product-catalog = { image_tag_mutability = "IMMUTABLE" }
+    ad              = { image_tag_mutability = "IMMUTABLE" }
 
   }
 
