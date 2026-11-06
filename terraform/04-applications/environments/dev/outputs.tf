@@ -14,5 +14,13 @@ output "recommendation_github_actions_role_arn" {
 }
 
 output "service_github_actions_role_arns" {
-  value = { for service, publisher in module.service_github_actions : service => publisher.role_arn }
+  description = "GitHub Actions publisher role ARNs for all custom services."
+  value = merge(
+    {
+      recommendation = module.recommendation_github_actions.role_arn
+    },
+    {
+      for service, publisher in module.service_github_actions : service => publisher.role_arn
+    }
+  )
 }

@@ -537,7 +537,9 @@ Publisher policies allow layer upload, PutImage, repository-scoped image
 inspection/pull (required by release verification), and GetAuthorizationToken
 on `*` as required by ECR. They grant no deployment, repository deletion, or
 cross-repository image permissions. New role ARNs are exposed by
-`service_github_actions_role_arns`. The existing Recommendation role receives
+`service_github_actions_role_arns`, which includes `recommendation`, `ad`, and
+`product-catalog`. The separate `recommendation_github_actions_role_arn` output
+remains available for compatibility. The existing Recommendation role receives
 the same repository-scoped inspection/pull additions.
 
 Validate with `terraform init -backend=false` and `terraform validate` in
