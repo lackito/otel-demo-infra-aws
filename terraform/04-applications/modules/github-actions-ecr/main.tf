@@ -8,7 +8,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github_actions.arn]
+      identifiers = [var.oidc_provider_arn]
     }
 
     condition {
@@ -50,10 +50,14 @@ data "aws_iam_policy_document" "ecr_push" {
   }
 }
 
-resource "aws_iam_openid_connect_provider" "github_actions" {
-  url            = "https://token.actions.githubusercontent.com"
-  client_id_list = ["sts.amazonaws.com"]
-  tags           = var.tags
+# GitHub OIDC is shared by the account, not owned by an application release.
+# Preserve any provider tracked by an older version of this module.
+removed {
+  from = aws_iam_openid_connect_provider.github_actions
+
+  lifecycle {
+    destroy = false
+  }
 }
 
 resource "aws_iam_role" "this" {

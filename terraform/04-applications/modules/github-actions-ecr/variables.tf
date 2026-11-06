@@ -19,3 +19,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "oidc_provider_arn" {
+  description = "ARN of the existing account-wide GitHub Actions OIDC provider."
+  type        = string
+}
