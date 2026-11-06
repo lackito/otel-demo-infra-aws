@@ -1,9 +1,10 @@
 data "aws_iam_policy_document" "github_actions_assume_role" {
   statement {
     effect = "Allow"
-    actions = [
-      "sts:AssumeRoleWithWebIdentity"
-    ]
+    actions = var.allow_session_tagging ? [
+      "sts:AssumeRoleWithWebIdentity",
+      "sts:TagSession"
+    ] : ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
       type        = "Federated"

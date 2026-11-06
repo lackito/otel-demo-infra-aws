@@ -136,15 +136,16 @@ ManagedBy   = Terraform
 
 ---
 
-# Recommendation CI/CD Identity
+# Service Publisher CI/CD Identities
 
 The `dev` environment reuses the account-wide GitHub OIDC provider and creates
-a dedicated IAM role for `lackito/otel-demo-apps` on the `main` branch. The role has only the ECR
-permissions needed to publish to the existing `recommendation` repository.
+one dedicated IAM role per custom service through `module.service_github_actions`.
+The keys are `recommendation`, `ad`, and `product-catalog`. Every role trusts
+`lackito/otel-demo-apps` on `main` and has ECR permissions for its service only.
 
 The AWS-specific application workflow references the resulting non-sensitive
-role ARN directly. The `recommendation_github_actions_role_arn` output can be
-used to verify that workflow configuration. The workflow uses this short-lived
+role ARN directly. The `service_github_actions_role_arns` output maps all three
+services to their ARNs and can verify that workflow configuration. The workflow uses this short-lived
 OIDC identity to build, publish, and update GitOps; it has no Kubernetes
 credentials.
 
@@ -162,7 +163,7 @@ sts:AssumeRoleWithWebIdentity`, apply this Terraform layer and confirm that its
 role output matches the role ARN configured in the application workflow:
 
 ```bash
-terraform output -raw recommendation_github_actions_role_arn
+terraform output -json service_github_actions_role_arns
 ```
 
 # Current Application Images
@@ -530,16 +531,17 @@ Layer 04 looks up the existing account-wide GitHub OIDC provider by URL and
 reuses its ARN for all three publisher roles. It verifies the provider includes
 `sts.amazonaws.com` as an audience. The provider is an account-level prerequisite,
 not an application-owned resource; do not import it into this layer if another
-Terraform state already owns it. Existing ECR and role resource addresses remain
-unchanged. See the recovery instructions below for older provider ownership.
+Terraform state already owns it. ECR resource addresses remain unchanged.
+Recommendation role addresses migrate using the moved blocks described below.
+See the recovery instructions for older provider ownership.
 
 Publisher policies allow layer upload, PutImage, repository-scoped image
 inspection/pull (required by release verification), and GetAuthorizationToken
 on `*` as required by ECR. They grant no deployment, repository deletion, or
 cross-repository image permissions. New role ARNs are exposed by
 `service_github_actions_role_arns`, which includes `recommendation`, `ad`, and
-`product-catalog`. The separate `recommendation_github_actions_role_arn` output
-remains available for compatibility. The existing Recommendation role receives
+`product-catalog`. The standalone Recommendation output is removed; use the
+`recommendation` key in this map. The existing Recommendation role receives
 the same repository-scoped inspection/pull additions.
 
 Validate with `terraform init -backend=false` and `terraform validate` in
@@ -608,11 +610,36 @@ Application, reuse the provider, and create any publisher roles/policies that
 were blocked by the failed provider creation. Actual actions depend on state;
 backend-free validation does not establish the live recovery plan.
 
-The publisher module has a mocked regression test for shared-provider trust and
-ARN propagation. It does not access AWS:
+The publisher module has mocked regression tests for shared-provider trust and
+preservation of each service's existing trust actions. They do not access AWS:
 
 ```sh
-cd ../../modules/github-actions-ecr
+cd ../../modules/github-actions-ecr-publisher
 terraform init -backend=false
 terraform test
 ```
+
+## Consolidated publisher module and state migration
+
+All three custom services use `module.service_github_actions`. The separate
+Recommendation module and `recommendation_github_actions_role_arn` output are
+removed. Read all ARNs with `terraform output -json service_github_actions_role_arns`;
+select the `recommendation` entry wherever the old standalone output was used.
+
+`environments/dev/migrations.tf` moves the existing Recommendation role and inline
+policy from the old module to `module.service_github_actions["recommendation"]`.
+Retain these blocks for existing deployments. No import, teardown, role rename,
+or workflow ARN change is required. On a fresh deployment, the shared module
+creates all three roles and naturally exposes all three map entries.
+
+The shared module's `allow_session_tagging` option preserves Recommendation's
+existing `sts:TagSession` trust during migration; it defaults to false for Ad and
+Product Catalog. This keeps the refactor from changing any IAM permissions.
+The account-wide GitHub provider stays a data-source dependency. The old
+provider's destroy-false removal block is retained at the environment level for
+states from before shared-provider reuse.
+
+After merging and pulling this refactor, run `terraform init`, then generate and
+review a saved plan. Existing installations should show the two Recommendation
+address moves, no AWS resource actions, and the output map/standalone-output
+updates. Apply that reviewed plan to persist the state addresses and outputs.
