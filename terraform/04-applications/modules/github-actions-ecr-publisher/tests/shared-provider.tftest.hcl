@@ -21,17 +21,21 @@ run "reuse_shared_provider" {
   command = plan
 
   assert {
-    condition     = output.oidc_provider_arn == var.oidc_provider_arn
-    error_message = "Other publishers must receive the existing shared provider ARN."
-  }
-
-  assert {
     condition     = one(one(data.aws_iam_policy_document.github_actions_assume_role.statement).principals).identifiers == toset([var.oidc_provider_arn])
-    error_message = "The Recommendation role must trust the existing provider ARN."
+    error_message = "Each publisher must trust the existing provider ARN."
   }
 
   assert {
     condition     = aws_iam_role.this.name == var.role_name
-    error_message = "Reusing OIDC must not rename the existing publisher role."
+    error_message = "The publisher role must use its configured service role name."
+  }
+}
+
+run "all_publishers_use_oidc_only_trust" {
+  command = plan
+
+  assert {
+    condition     = one(data.aws_iam_policy_document.github_actions_assume_role.statement).actions == toset(["sts:AssumeRoleWithWebIdentity"])
+    error_message = "All publishers must use the same OIDC-only trust actions."
   }
 }

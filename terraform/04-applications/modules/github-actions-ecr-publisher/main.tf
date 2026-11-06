@@ -1,9 +1,7 @@
 data "aws_iam_policy_document" "github_actions_assume_role" {
   statement {
-    effect = "Allow"
-    actions = [
-      "sts:AssumeRoleWithWebIdentity"
-    ]
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
       type        = "Federated"

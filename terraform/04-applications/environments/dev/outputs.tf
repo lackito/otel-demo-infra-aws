@@ -8,11 +8,7 @@ output "repository_arns" {
   value       = module.ecr_repositories.repository_arns
 }
 
-output "recommendation_github_actions_role_arn" {
-  description = "IAM role ARN for the recommendation GitHub Actions workflow."
-  value       = module.recommendation_github_actions.role_arn
-}
-
 output "service_github_actions_role_arns" {
-  value = { for service, publisher in module.service_github_actions : service => publisher.role_arn }
+  description = "GitHub Actions publisher role ARNs for all custom services."
+  value       = { for service, publisher in module.service_github_actions : service => publisher.role_arn }
 }
