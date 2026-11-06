@@ -73,6 +73,24 @@ For a release, compare the application workflow run, ECR image tag, GitOps
 commit, and deployed image. Recorded milestones do not establish current
 cluster health. Future improvements are listed in the operations guide.
 
+## Validate the AWS application
+
+From this repository's root, with AWS credentials and the EKS kubeconfig alias
+configured:
+
+```bash
+aws-vault exec admin -- make application-validate
+```
+
+The command reads the explicit `otel-demo-aws` context, waits for Argo CD
+`otel-demo-aws` to be Synced/Healthy, checks Deployment rollouts and three stable
+health samples, and prints pods plus Recommendation, Ad, and Product Catalog
+image references and running image IDs. It does not deploy or change resources.
+
+If credentials are already exported in your shell, use `make application-validate`
+directly. Override the context using `AWS_CLUSTER_CONTEXT=<eks-context>`.
+See [command setup and output interpretation](docs/OPERATIONS.md#command-line-application-validation).
+
 ## Related repositories
 
 - [otel-demo-apps](https://github.com/lackito/otel-demo-apps): application source and release workflows.

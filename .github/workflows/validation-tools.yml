@@ -1,0 +1,32 @@
+name: Validation tools
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/application-validate
+      - tests/test_application_validate.py
+      - Makefile
+      - .github/workflows/validation-tools.yml
+  pull_request:
+    paths:
+      - scripts/application-validate
+      - tests/test_application_validate.py
+      - Makefile
+      - .github/workflows/validation-tools.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check shell syntax
+        run: bash -n scripts/application-validate
+      - name: Exercise validation success and failure cases
+        run: python -m unittest discover -s tests -v
