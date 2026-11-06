@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cluster_context="${AWS_CLUSTER_CONTEXT:-otel-demo-aws}"
+application_name="otel-demo-aws"
+application_namespace="argocd"
+workload_namespace="opentelemetry-demo"
+timeout_seconds="${APPLICATION_VALIDATE_TIMEOUT_SECONDS:-900}"
+poll_interval_seconds="${APPLICATION_VALIDATE_POLL_SECONDS:-10}"
+elapsed_seconds=0
+
+if [[ ! "${timeout_seconds}" =~ ^[1-9][0-9]*$ || ! "${poll_interval_seconds}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Validation timeout and poll interval must be positive integer seconds." >&2
+  exit 1
+fi
+
+case "${cluster_context}" in
+  kind-*|minikube)
+    echo "AWS application validation requires an EKS context, not ${cluster_context}." >&2
+    exit 1
+    ;;
+esac
+
+if ! kubectl config get-contexts "${cluster_context}" --no-headers >/dev/null 2>&1; then
+  echo "Expected context ${cluster_context} does not exist in the standard kubeconfig." >&2
+  echo "Configure the EKS context with aws eks update-kubeconfig --region us-east-1 --name otel-demo-aws-dev --alias otel-demo-aws, or set AWS_CLUSTER_CONTEXT." >&2
+  exit 1
+fi
+
+# Fail promptly on expired AWS credentials, missing RBAC, or a missing Application.
+kubectl \
+  --context "${cluster_context}" \
+  get application "${application_name}" \
+  --namespace "${application_namespace}" \
+  --output name >/dev/null
+
+while ((elapsed_seconds < timeout_seconds)); do
+  sync_status="$(
+    kubectl \
+      --context "${cluster_context}" \
+      get application "${application_name}" \
+      --namespace "${application_namespace}" \
+      --output jsonpath='{.status.sync.status}' 2>/dev/null || true
+  )"
+
+  health_status="$(
+    kubectl \
+      --context "${cluster_context}" \
+      get application "${application_name}" \
+      --namespace "${application_namespace}" \
+      --output jsonpath='{.status.health.status}' 2>/dev/null || true
+  )"
+
+  echo "Argo CD: sync=${sync_status:-Unknown} health=${health_status:-Unknown}"
+
+  if [[ "${sync_status}" == "Synced" && "${health_status}" == "Healthy" ]]; then
+    break
+  fi
+
+  sleep "${poll_interval_seconds}"
+  elapsed_seconds=$((elapsed_seconds + poll_interval_seconds))
+done
+
+if [[ "${sync_status:-}" != "Synced" || "${health_status:-}" != "Healthy" ]]; then
+  echo "Argo CD Application did not become Synced and Healthy within ${timeout_seconds} seconds." >&2
+  kubectl \
+    --context "${cluster_context}" \
+    describe application "${application_name}" \
+    --namespace "${application_namespace}" >&2
+  exit 1
+fi
+
+deployments="$(
+  kubectl \
+    --context "${cluster_context}" \
+    get deployments \
+    --namespace "${workload_namespace}" \
+    --output name
+)"
+
+if [[ -z "${deployments}" ]]; then
+  echo "No deployments were found in namespace ${workload_namespace}." >&2
+  exit 1
+fi
+
+while IFS= read -r deployment; do
+  kubectl \
+    --context "${cluster_context}" \
+    rollout \
+    status \
+    "${deployment}" \
+    --namespace "${workload_namespace}" \
+    --timeout=600s
+done <<< "${deployments}"
+
+stable_checks=0
+elapsed_seconds=0
+
+while ((elapsed_seconds < 300)); do
+  sync_status="$(
+    kubectl \
+      --context "${cluster_context}" \
+      get application "${application_name}" \
+      --namespace "${application_namespace}" \
+      --output jsonpath='{.status.sync.status}'
+  )"
+
+  health_status="$(
+    kubectl \
+      --context "${cluster_context}" \
+      get application "${application_name}" \
+      --namespace "${application_namespace}" \
+      --output jsonpath='{.status.health.status}'
+  )"
+
+  if [[ "${sync_status}" == "Synced" && "${health_status}" == "Healthy" ]]; then
+    stable_checks=$((stable_checks + 1))
+  else
+    stable_checks=0
+  fi
+
+  echo "Stable health check ${stable_checks}/3: sync=${sync_status} health=${health_status}"
+
+  if ((stable_checks == 3)); then
+    break
+  fi
+
+  sleep "${poll_interval_seconds}"
+  elapsed_seconds=$((elapsed_seconds + poll_interval_seconds))
+done
+
+if ((stable_checks != 3)); then
+  echo "Argo CD Application did not remain healthy for three consecutive checks." >&2
+  exit 1
+fi
+
+custom_services=(recommendation ad product-catalog)
+service_labels=("Recommendation" "Ad" "Product Catalog")
+service_images=()
+
+for service in "${custom_services[@]}"; do
+  images="$(
+    kubectl \
+      --context "${cluster_context}" \
+      get pods \
+      --namespace "${workload_namespace}" \
+      --selector "app.kubernetes.io/component=${service}" \
+      --output jsonpath='{.items[*].spec.containers[*].image}'
+  )"
+
+  if [[ -z "${images}" ]]; then
+    echo "${service} workload image could not be found." >&2
+    exit 1
+  fi
+
+  if [[ "${images}" == *"otel-demo-kind-"* || "${images}" == *"otel-demo-local-"* || "${images}" == *":kind-"* ]]; then
+    echo "AWS ${service} workload unexpectedly references a kind development image: ${images}" >&2
+    exit 1
+  fi
+
+  service_images+=("${images}")
+done
+
+echo "AWS application validation passed."
+echo "Context: ${cluster_context}"
+echo
+kubectl \
+  --context "${cluster_context}" \
+  get application "${application_name}" \
+  --namespace "${application_namespace}"
+echo
+kubectl \
+  --context "${cluster_context}" \
+  get pods \
+  --namespace "${workload_namespace}"
+echo
+for index in "${!custom_services[@]}"; do
+  printf '%s image: %s\n' "${service_labels[index]}" "${service_images[index]}"
+done
+
+echo
+echo "Custom service pod image IDs (compare these digests with the release/ECR):"
+kubectl \
+  --context "${cluster_context}" \
+  get pods \
+  --namespace "${workload_namespace}" \
+  --selector 'app.kubernetes.io/component in (recommendation,ad,product-catalog)' \
+  --output 'custom-columns=SERVICE:.spec.containers[*].name,POD:.metadata.name,READY:.status.containerStatuses[*].ready,IMAGE_ID:.status.containerStatuses[*].imageID'

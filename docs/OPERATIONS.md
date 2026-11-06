@@ -519,3 +519,52 @@ Recorded implementation milestones (verify current deployment separately):
 
 The project records a completed GitOps delivery path. Verify the current
 workflow run, GitOps revision, and cluster health before treating it as live.
+
+## Command-line application validation
+
+Run from `otel-demo-infra-aws`, not from the layer-04 Terraform directory.
+Configure the AWS context once if its alias does not exist:
+
+```bash
+aws-vault exec admin -- aws eks update-kubeconfig \
+  --region us-east-1 --name otel-demo-aws-dev --alias otel-demo-aws
+aws-vault exec admin -- make application-validate
+```
+
+The script always passes its AWS context to cluster requests, regardless of the
+current kubectl context. To use the EKS-generated context name instead:
+
+```bash
+AWS_CLUSTER_CONTEXT=arn:aws:eks:us-east-1:650032249451:cluster/otel-demo-aws-dev \
+  aws-vault exec admin -- make application-validate
+```
+
+It fails promptly for a missing context or an initial authentication/RBAC error.
+It then waits up to 900 seconds for Argo sync/health, checks every Deployment
+rollout, requires three consecutive healthy samples, and verifies that all three
+custom-service pod image references exist and are not kind development images.
+Pod and Argo summaries, all three image references, and running pod image IDs
+are printed on success. A healthy upstream Product Catalog image is allowed
+while its first custom AWS release is pending; the output reports what is
+actually running and does not claim that all three services use custom images.
+
+Compare each printed SHA tag with the service release run, and compare each
+running image ID digest with the published ECR image digest for exact content.
+This command reports running digests; it does not query ECR or automatically
+establish release-to-pod digest equality. It checks Kubernetes/Argo rollout
+health, not storefront behavior or downstream telemetry storage. In particular,
+AWS OpenSearch logging still needs separate configuration and validation.
+
+The script is read-only and does not create or refresh Argo operations, change
+kubeconfig, provision resources, or install a second Helm release. Context setup
+above is a separate local kubeconfig operation. Use
+`APPLICATION_VALIDATE_TIMEOUT_SECONDS` and `APPLICATION_VALIDATE_POLL_SECONDS`
+for positive-integer initial wait/poll overrides (defaults 900 and 10 seconds).
+Deployment rollout timeout is 600 seconds each; stable health checks have a
+separate 300-second budget, matching the kind command's behavior.
+
+Offline tests require Python 3 and no AWS credentials:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
