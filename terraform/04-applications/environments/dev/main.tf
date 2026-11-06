@@ -5,7 +5,8 @@ module "ecr_repositories" {
 }
 
 module "recommendation_github_actions" {
-  source = "../../modules/github-actions-ecr"
+  source            = "../../modules/github-actions-ecr"
+  oidc_provider_arn = data.aws_iam_openid_connect_provider.github_actions.arn
 
   ecr_repository_arn = module.ecr_repositories.repository_arns["recommendation"]
 

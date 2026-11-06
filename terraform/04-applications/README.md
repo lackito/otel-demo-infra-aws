@@ -138,8 +138,8 @@ ManagedBy   = Terraform
 
 # Recommendation CI/CD Identity
 
-The `dev` environment creates a GitHub OIDC provider and a dedicated IAM role
-for `lackito/otel-demo-apps` on the `main` branch. The role has only the ECR
+The `dev` environment reuses the account-wide GitHub OIDC provider and creates
+a dedicated IAM role for `lackito/otel-demo-apps` on the `main` branch. The role has only the ECR
 permissions needed to publish to the existing `recommendation` repository.
 
 The AWS-specific application workflow references the resulting non-sensitive
@@ -526,10 +526,12 @@ Potential additions:
 Layer 04 adds `product-catalog` and `ad` ECR repositories (immutable tags),
 plus one main-only GitHub OIDC publisher role per repository. Existing
 Recommendation, Checkout, and Frontend repositories are retained.
-`module.recommendation_github_actions` continues to own the account-wide
-GitHub OIDC provider at its original address. New publisher modules consume
-its ARN; they never create another provider. Existing resource addresses
-are unchanged, so no state move/import is required for this change.
+Layer 04 looks up the existing account-wide GitHub OIDC provider by URL and
+reuses its ARN for all three publisher roles. It verifies the provider includes
+`sts.amazonaws.com` as an audience. The provider is an account-level prerequisite,
+not an application-owned resource; do not import it into this layer if another
+Terraform state already owns it. Existing ECR and role resource addresses remain
+unchanged. See the recovery instructions below for older provider ownership.
 
 Publisher policies allow layer upload, PutImage, repository-scoped image
 inspection/pull (required by release verification), and GetAuthorizationToken
@@ -557,3 +559,58 @@ roles would replace their names; inspect the saved plan against real state.
 Keep the shared Helm release name `otel-demo`. See the
 [naming guide](https://github.com/lackito/otel-demo-apps/blob/main/docs/NAMING.md)
 for the coordinated repository rename and release configuration.
+
+## Recover from GitHub OIDC EntityAlreadyExists (HTTP 409)
+
+AWS already has a provider for `https://token.actions.githubusercontent.com`,
+but older layer-04 code always tried to create it. A failed apply may already
+have created ECR repositories and the Argo Application; successful operations
+are normally recorded in state even when another operation fails. Do not destroy
+those resources or remove their state to retry.
+
+The corrected configuration reads the existing provider and uses its ARN in
+all three role trust policies. It does not change the provider's audiences,
+thumbprints, tags, or ownership in another state. For a new AWS account,
+provision this shared provider once through account-level bootstrap before
+applying layer 04. This is separate from EKS's cluster-specific OIDC provider.
+
+If an older layer-04 state does track the GitHub provider, a `removed` block with
+`destroy = false` relinquishes that state binding without deleting the AWS
+provider. This is intentional: future application teardown must not delete a
+shared provider. Review that state-only action in the plan; it must not propose
+creating, replacing, or deleting the real provider. This fix requires no import
+when the existing provider is already outside layer-04 state.
+
+After merging/pulling the fix, authenticate with the AWS profile used for this
+environment and run from `environments/dev`:
+
+```sh
+terraform init
+terraform state list
+terraform plan -out=layer04.tfplan
+terraform show layer04.tfplan
+# After reviewing the plan:
+terraform apply layer04.tfplan
+```
+
+Confirm the account is the intended one using `aws sts get-caller-identity`.
+To inspect the existing provider (for the configured account):
+
+```sh
+aws iam get-open-id-connect-provider \
+  --open-id-connect-provider-arn arn:aws:iam::650032249451:oidc-provider/token.actions.githubusercontent.com
+```
+
+The saved plan should retain successfully created ECR repositories and the Argo
+Application, reuse the provider, and create any publisher roles/policies that
+were blocked by the failed provider creation. Actual actions depend on state;
+backend-free validation does not establish the live recovery plan.
+
+The publisher module has a mocked regression test for shared-provider trust and
+ARN propagation. It does not access AWS:
+
+```sh
+cd ../../modules/github-actions-ecr
+terraform init -backend=false
+terraform test
+```
