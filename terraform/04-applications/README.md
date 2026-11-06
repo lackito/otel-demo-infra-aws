@@ -531,9 +531,8 @@ Layer 04 looks up the existing account-wide GitHub OIDC provider by URL and
 reuses its ARN for all three publisher roles. It verifies the provider includes
 `sts.amazonaws.com` as an audience. The provider is an account-level prerequisite,
 not an application-owned resource; do not import it into this layer if another
-Terraform state already owns it. ECR resource addresses remain unchanged.
-Recommendation role addresses migrate using the moved blocks described below.
-See the recovery instructions for older provider ownership.
+Terraform state already owns it. All three roles are created by the shared
+publisher module on a fresh layer-04 deployment.
 
 Publisher policies allow layer upload, PutImage, repository-scoped image
 inspection/pull (required by release verification), and GetAuthorizationToken
@@ -578,13 +577,6 @@ thumbprints, tags, or ownership in another state. For a new AWS account,
 provision this shared provider once through account-level bootstrap before
 applying layer 04. This is separate from EKS's cluster-specific OIDC provider.
 
-If an older layer-04 state does track the GitHub provider, a `removed` block with
-`destroy = false` relinquishes that state binding without deleting the AWS
-provider. This is intentional: future application teardown must not delete a
-shared provider. Review that state-only action in the plan; it must not propose
-creating, replacing, or deleting the real provider. This fix requires no import
-when the existing provider is already outside layer-04 state.
-
 After merging/pulling the fix, authenticate with the AWS profile used for this
 environment and run from `environments/dev`:
 
@@ -611,7 +603,7 @@ were blocked by the failed provider creation. Actual actions depend on state;
 backend-free validation does not establish the live recovery plan.
 
 The publisher module has mocked regression tests for shared-provider trust and
-preservation of each service's existing trust actions. They do not access AWS:
+uniform OIDC-only trust actions. They do not access AWS:
 
 ```sh
 cd ../../modules/github-actions-ecr-publisher
@@ -619,27 +611,47 @@ terraform init -backend=false
 terraform test
 ```
 
-## Consolidated publisher module and state migration
+## Disposable layer-04 rebuilds
 
-All three custom services use `module.service_github_actions`. The separate
-Recommendation module and `recommendation_github_actions_role_arn` output are
-removed. Read all ARNs with `terraform output -json service_github_actions_role_arns`;
-select the `recommendation` entry wherever the old standalone output was used.
+All three custom services use `module.service_github_actions`; there is no
+separate Recommendation module or standalone role output. Read all role ARNs
+with `terraform output -json service_github_actions_role_arns` and select the
+service key. All publishers use the same OIDC-only trust policy structure.
 
-`environments/dev/migrations.tf` moves the existing Recommendation role and inline
-policy from the old module to `module.service_github_actions["recommendation"]`.
-Retain these blocks for existing deployments. No import, teardown, role rename,
-or workflow ARN change is required. On a fresh deployment, the shared module
-creates all three roles and naturally exposes all three map entries.
+This development environment is rebuilt from scratch rather than migrated.
+There are no moved/removed blocks or Recommendation-specific compatibility
+options. Destroy the existing layer 04 using the current deployed configuration
+before merging/pulling the refactor. Do not apply the new addresses over the old
+state or discard the state file; destroy first so AWS objects and state agree.
 
-The shared module's `allow_session_tagging` option preserves Recommendation's
-existing `sts:TagSession` trust during migration; it defaults to false for Ad and
-Product Catalog. This keeps the refactor from changing any IAM permissions.
-The account-wide GitHub provider stays a data-source dependency. The old
-provider's destroy-false removal block is retained at the environment level for
-states from before shared-provider reuse.
+To retest this publisher refactor, destroy and recreate **04-applications only**.
+Keep 03-platform (Argo CD/controller), 02-infrastructure (EKS/network), and the
+01-bootstrap state backend. Those layers have no changes in this refactor.
 
-After merging and pulling this refactor, run `terraform init`, then generate and
-review a saved plan. Existing installations should show the two Recommendation
-address moves, no AWS resource actions, and the output map/standalone-output
-updates. Apply that reviewed plan to persist the state addresses and outputs.
+Rebuild sequence:
+
+1. Pause AWS release runs while rebuilding. In the current `main` checkout,
+   remove the demo Application with cascading deletion in Argo CD so its managed
+   workloads are cleaned up while the Argo controller is still available.
+   Layer 04's Terraform Application does not automatically cascade workloads.
+2. Empty images from the layer-04 ECR repositories before destroying them.
+   The current ECR configuration does not enable `force_delete`; AWS rejects
+   deletion of repositories that still contain images. Do not delete unrelated
+   repositories or the shared GitHub OIDC provider.
+3. From `terraform/04-applications/environments/dev`, run `terraform destroy`
+   under `aws-vault exec admin --`. Review the destroy plan. Existing roles,
+   policies, ECR repositories, and Application registration belong to this layer.
+4. Merge/pull the simplified publisher code, then run `terraform init`, review
+   a fresh plan, and apply it in that same directory. The shared module creates
+   Recommendation, Ad, and Product Catalog publishers and the output map lists
+   all three. The shared GitHub provider remains an account-level prerequisite.
+5. Re-enable AWS releases and manually run all three service AWS workflows on
+   `main`. Recreated ECR repositories are empty; Terraform does not build or
+   restore images. GitOps may still reference the previous tags until releases
+   publish, verify, and promote new images. Validate afterward with
+   `aws-vault exec admin -- make application-validate` from the repo root.
+
+For a complete teardown after testing, remove application workloads first, then
+tear down 04 → 03 → 02 while their dependencies are available. Keep the shared
+01 state backend for the next run; it is not necessary to destroy it to test or
+rebuild these publisher modules.

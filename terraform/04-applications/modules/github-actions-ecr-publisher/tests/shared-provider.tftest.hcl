@@ -27,28 +27,15 @@ run "reuse_shared_provider" {
 
   assert {
     condition     = aws_iam_role.this.name == var.role_name
-    error_message = "Reusing OIDC must not rename the existing publisher role."
+    error_message = "The publisher role must use its configured service role name."
   }
 }
 
-run "preserve_recommendation_session_tagging" {
-  command = plan
-
-  variables {
-    allow_session_tagging = true
-  }
-
-  assert {
-    condition     = one(data.aws_iam_policy_document.github_actions_assume_role.statement).actions == toset(["sts:AssumeRoleWithWebIdentity", "sts:TagSession"])
-    error_message = "Migrating Recommendation must preserve its existing session-tagging trust."
-  }
-}
-
-run "default_publishers_do_not_gain_session_tagging" {
+run "all_publishers_use_oidc_only_trust" {
   command = plan
 
   assert {
     condition     = one(data.aws_iam_policy_document.github_actions_assume_role.statement).actions == toset(["sts:AssumeRoleWithWebIdentity"])
-    error_message = "Ad and Product Catalog must retain their existing OIDC-only trust."
+    error_message = "All publishers must use the same OIDC-only trust actions."
   }
 }

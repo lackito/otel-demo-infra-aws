@@ -24,9 +24,3 @@ variable "oidc_provider_arn" {
   description = "Existing account-wide GitHub OIDC provider ARN."
   type        = string
 }
-
-variable "allow_session_tagging" {
-  description = "Retain session-tagging trust where an existing publisher already allows it."
-  type        = bool
-  default     = false
-}

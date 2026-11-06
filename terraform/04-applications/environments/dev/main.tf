@@ -12,11 +12,9 @@ module "argocd_application" {
 }
 
 module "service_github_actions" {
-  for_each          = toset(["recommendation", "product-catalog", "ad"])
-  source            = "../../modules/github-actions-ecr-publisher"
-  oidc_provider_arn = data.aws_iam_openid_connect_provider.github_actions.arn
-  # Preserve the existing Recommendation trust policy during state migration.
-  allow_session_tagging  = each.key == "recommendation"
+  for_each               = toset(["recommendation", "product-catalog", "ad"])
+  source                 = "../../modules/github-actions-ecr-publisher"
+  oidc_provider_arn      = data.aws_iam_openid_connect_provider.github_actions.arn
   ecr_repository_arn     = module.ecr_repositories.repository_arns[each.key]
   github_owner           = "lackito"
   github_owner_id        = "6595109"
