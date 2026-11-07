@@ -5,6 +5,10 @@ Provision AWS infrastructure with Terraform and deploy the
 Application source lives in `otel-demo-apps`; AWS desired state lives in
 `otel-demo-gitops-aws`.
 
+Before running AWS commands, authenticate to the intended AWS account with
+an identity that has the required permissions. All command examples assume
+credentials are already available in your shell.
+
 ## How it works
 
 ```text
@@ -38,7 +42,7 @@ Routine teardown uses 04 → 03 → 02 and retains the shared state backend.
 From this repository's root, after configuring the EKS context:
 
 ```bash
-aws-vault exec admin -- make application-validate
+make application-validate
 ```
 
 This reads the `otel-demo-aws` context, checks Argo CD health and deployment

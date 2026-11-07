@@ -3,16 +3,16 @@
 [Overview](../README.md) · [Architecture](ARCHITECTURE.md)
 
 Run commands from `otel-demo-infra-aws` unless another directory is named.
-The examples use AWS profile `admin` through aws-vault, account `650032249451`,
-and region `us-east-1`. Review the environment settings before provisioning.
+The examples use region `us-east-1`. Review the environment settings before
+provisioning.
 
 ## Prerequisites
 
-Install Terraform, AWS CLI, aws-vault, kubectl, Helm, Make, and Python 3.
-Verify credentials:
+Install Terraform, AWS CLI, kubectl, Helm, Make, and Python 3.
+Check the active account:
 
 ```bash
-aws-vault exec admin -- aws sts get-caller-identity
+aws sts get-caller-identity
 ```
 
 The S3 backend must exist before layers 02–04 initialize. Its configuration is
@@ -25,28 +25,28 @@ Layer 04 also requires the account-wide GitHub OIDC provider. See the
 For each layer below, run `init`, review `plan`, then `apply`, in order:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev init
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev plan
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev apply
+terraform -chdir=terraform/02-infrastructure/environments/dev init
+terraform -chdir=terraform/02-infrastructure/environments/dev plan
+terraform -chdir=terraform/02-infrastructure/environments/dev apply
 ```
 
 Configure the context after layer 02:
 
 ```bash
-aws-vault exec admin -- aws eks update-kubeconfig \
+aws eks update-kubeconfig \
   --region us-east-1 --name otel-demo-aws-dev --alias otel-demo-aws
-aws-vault exec admin -- kubectl --context otel-demo-aws get nodes
+kubectl --context otel-demo-aws get nodes
 ```
 
 Install the platform and then register the application:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev init
-aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev plan
-aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev apply
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev init
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev plan
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev apply
+terraform -chdir=terraform/03-platform/environments/dev init
+terraform -chdir=terraform/03-platform/environments/dev plan
+terraform -chdir=terraform/03-platform/environments/dev apply
+terraform -chdir=terraform/04-applications/environments/dev init
+terraform -chdir=terraform/04-applications/environments/dev plan
+terraform -chdir=terraform/04-applications/environments/dev apply
 ```
 
 Keep the layers separate: the Argo CD CRDs installed by 03 must exist before
@@ -58,7 +58,7 @@ updates the corresponding GitOps values. See [release setup](../terraform/04-app
 ## Validate the deployment
 
 ```bash
-aws-vault exec admin -- make application-validate
+make application-validate
 ```
 
 The command waits for `otel-demo-aws` to be `Synced` and `Healthy`, checks all
@@ -85,7 +85,7 @@ command. Container logs remain available through `kubectl logs`.
 Keep this command running in a separate terminal:
 
 ```bash
-aws-vault exec admin -- kubectl --context otel-demo-aws \
+kubectl --context otel-demo-aws \
   -n opentelemetry-demo port-forward svc/frontend-proxy 8080:8080
 ```
 
@@ -96,7 +96,7 @@ Open the store at `http://localhost:8080`, Grafana at
 For Argo CD, retrieve the initial password:
 
 ```bash
-aws-vault exec admin -- kubectl --context otel-demo-aws -n argocd \
+kubectl --context otel-demo-aws -n argocd \
   get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 --decode
 echo
 ```
@@ -104,7 +104,7 @@ echo
 Then keep this running in another terminal:
 
 ```bash
-aws-vault exec admin -- kubectl --context otel-demo-aws \
+kubectl --context otel-demo-aws \
   -n argocd port-forward svc/argocd-server 18080:80
 ```
 
@@ -117,7 +117,7 @@ For an image pull failure, inspect events and confirm the exact tag exists in
 ECR. After rebuilding the infrastructure, publish all three images again.
 
 ```bash
-aws-vault exec admin -- kubectl --context otel-demo-aws \
+kubectl --context otel-demo-aws \
   -n opentelemetry-demo get events --sort-by=.lastTimestamp
 ```
 
@@ -132,9 +132,9 @@ Set `AWS_RELEASES_ENABLED=false` in `otel-demo-apps` to stop automatic AWS
 publishing while the environment is down. Destroy in this order:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev destroy
-aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev destroy
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev destroy
+terraform -chdir=terraform/04-applications/environments/dev destroy
+terraform -chdir=terraform/03-platform/environments/dev destroy
+terraform -chdir=terraform/02-infrastructure/environments/dev destroy
 ```
 
 Layer 04's Application finalizer lets Argo CD remove the demo workloads; its
