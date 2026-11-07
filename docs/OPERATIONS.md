@@ -1,570 +1,143 @@
-# AWS EKS Operations Guide
+# AWS operations
 
-Detailed deployment procedures, architecture notes, and project milestones.
-Return to the [project overview](../README.md).
+[Overview](../README.md) · [Architecture](ARCHITECTURE.md)
 
-This project deploys the OpenTelemetry Demo application on Amazon EKS using a fully automated GitOps workflow.
+Run commands from `otel-demo-infra-aws` unless another directory is named.
+The examples use AWS profile `admin` through aws-vault, account `650032249451`,
+and region `us-east-1`. Review the environment settings before provisioning.
 
----
+## Prerequisites
 
-# Documentation
-
-- **[README.md](../README.md)** — Project overview and architecture
-- **[docs/PROJECT_WALKTHROUGH.md](PROJECT_WALKTHROUGH.md)** — High-level explanation of how everything works
-- **[docs/PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)** — Complete project context for continuing development
-- **[docs/CHANGELOG.md](CHANGELOG.md)** — Major milestones and project history
-
----
-
-# Project Overview
-
-The goal of this project is to demonstrate an enterprise-style deployment workflow:
-
-1. Infrastructure is created using Terraform.
-2. Kubernetes platform components are installed.
-3. Argo CD is configured to manage applications.
-4. Developers push application code.
-5. GitHub Actions builds and publishes container images.
-6. GitOps repositories are updated automatically.
-7. Argo CD detects changes and deploys workloads to Kubernetes.
-
-Application releases follow the GitOps workflow; Terraform manages infrastructure
-and platform changes.
-
-Git is the source of truth.
-
----
-
-# Architecture
-
-```
-                         Developer
-
-                            |
-                            |
-                         git push
-
-                            |
-                            v
-
-                    GitHub Actions
-                            |
-                            |
-              +-------------+-------------+
-              |                           |
-              v                           v
-
-          Docker Build              GitOps Update
-
-              |                           |
-              v                           v
-
-        Amazon ECR              otel-demo-gitops-aws Repository
-
-                                          |
-                                          |
-                                          v
-
-                                      Argo CD
-
-                                          |
-                                          |
-                                          v
-
-                                  Amazon EKS Cluster
-
-                                          |
-                                          |
-                                          v
-
-                              OpenTelemetry Demo Application
-```
-
----
-
-# Repository Structure
-
-The project is separated into independent repositories.
-
-## Infrastructure Repository
-
-```
-otel-demo-infra-aws
-```
-
-Contains the AWS implementation’s Terraform code.
-
-```
-otel-demo-infra-aws
-|
-└── terraform
-    ├── 01-bootstrap
-    ├── 02-infrastructure
-    ├── 03-platform
-    └── 04-applications
-```
-
----
-
-## GitOps Repository
-
-```
-otel-demo-gitops-aws
-```
-
-Contains Kubernetes desired state.
-
-```
-otel-demo-gitops-aws
-
-├── applications
-│   └── otel-demo
-│       └── values.yaml
-│
-└── argocd
-    └── applications
-        └── otel-demo.yaml
-```
-
----
-
-## Application Repository
-
-```
-otel-demo-apps
-```
-
-Contains application source code and CI/CD workflows.
-
-Example:
-
-```
-otel-demo-apps
-
-├── apps
-│   └── recommendation
-│
-└── .github
-    └── workflows
-        └── recommendation-release.yml
-```
-
----
-
-# Terraform Layers
-
-## 01 - Bootstrap
-
-Creates Terraform backend resources.
-
-Examples:
-
-- S3 Terraform state bucket
-- S3-native state locking through `use_lockfile = true` in downstream backends
-
-Purpose:
-
-Provide centralized Terraform state management.
-
----
-
-# 02 - Infrastructure
-
-Creates AWS infrastructure.
-
-Responsibilities:
-
-- VPC
-- Networking
-- Subnets
-- Security Groups
-- Amazon EKS Cluster
-- Worker Nodes
-- IAM configuration
-
-Result:
-
-A running Kubernetes cluster.
-
----
-
-# 03 - Platform
-
-Installs shared Kubernetes platform services.
-
-Current components:
-
-- AWS Load Balancer Controller
-- IAM Role for Service Accounts (IRSA)
-- Argo CD
-- Helm-based Kubernetes platform deployments
-
-Purpose:
-
-Prepare Kubernetes for application workloads.
-
----
-
-# 04 - Applications
-
-Bootstraps application delivery.
-
-Responsibilities:
-
-- Create ECR repositories
-- Configure GitHub Actions IAM permissions
-- Register Argo CD Applications
-
-Argo CD manages application deployment.
-
----
-
-# GitOps Workflow
-
-## Application Development
-
-Developer changes code:
-
-```
-apps/recommendation
-```
-
-and pushes:
-
-```
-git push
-```
-
----
-
-## Continuous Integration
-
-GitHub Actions:
-
-1. Checks out source code
-2. Authenticates with AWS using OIDC
-3. Builds Docker image
-4. Pushes image to Amazon ECR
-5. Updates GitOps values file
-6. Commits GitOps change
-
-Example:
-
-Before:
-
-```yaml
-image:
-  tag: old-version
-```
-
-After:
-
-```yaml
-image:
-  tag: new-git-sha
-```
-
----
-
-## Continuous Deployment
-
-Argo CD detects the GitOps repository change.
-
-Argo CD:
-
-1. Pulls latest configuration
-2. Renders Helm chart
-3. Applies Kubernetes resources
-4. Maintains desired state
-
----
-
-# Technologies Used
-
-## Cloud
-
-- AWS
-- Amazon EKS
-- Amazon ECR
-- IAM
-- VPC
-
-## Infrastructure as Code
-
-- Terraform
-- Terraform Remote State
-- Terraform Modules
-
-## Kubernetes
-
-- Kubernetes
-- Helm
-- Argo CD
-
-## CI/CD
-
-- GitHub Actions
-- GitHub OIDC Authentication
-
-## Observability
-
-- OpenTelemetry Demo
-- Prometheus
-- Grafana
-- Jaeger
-
----
-
-# Deployment Process
-
-## Deploy Infrastructure
-
-First provision or verify the `01-bootstrap` state backend. Then run the
-remaining Terraform layers in order:
-
-```
-02-infrastructure
-
-↓
-
-03-platform
-
-↓
-
-04-applications
-```
-
----
-
-## Verify EKS
-
-Update kubeconfig:
+Install Terraform, AWS CLI, aws-vault, kubectl, Helm, Make, and Python 3.
+Verify credentials:
 
 ```bash
-aws eks update-kubeconfig \
---region us-east-1 \
---name otel-demo-aws-dev
+aws-vault exec admin -- aws sts get-caller-identity
 ```
 
-Check nodes:
+The S3 backend must exist before layers 02–04 initialize. Its configuration is
+in `terraform/01-bootstrap`; retain this shared backend during routine teardown.
+Layer 04 also requires the account-wide GitHub OIDC provider. See the
+[application setup guide](../terraform/04-applications/README.md#release-credentials).
+
+## Deploy
+
+For each layer below, run `init`, review `plan`, then `apply`, in order:
 
 ```bash
-kubectl get nodes
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev init
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev plan
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev apply
 ```
 
----
-
-## Verify Argo CD
-
-```bash
-kubectl get applications -n argocd
-```
-
-Expected:
-
-```
-NAME        SYNC STATUS   HEALTH STATUS
-
-otel-demo   Synced        Healthy
-```
-
----
-
-## Verify Application
-
-```bash
-kubectl get pods \
--n opentelemetry-demo
-```
-
-Expected:
-
-All services running.
-
----
-
-# Destroy Procedure
-
-Destroy workloads and dependent resources before their supporting layers.
-Review Argo CD application deletion behavior and confirm workload-created load
-balancers are removed before tearing down the controller or cluster.
-
-The dependency order is reversed for teardown:
-
-```
-04-applications
-
-↓
-
-03-platform
-
-↓
-
-02-infrastructure
-
-↓
-
-01-bootstrap
-```
-
-Why?
-
-Higher layers depend on lower layers. Retain `01-bootstrap` and its state bucket
-for ordinary environment teardown. Remove the backend only for permanent
-retirement, after dependent resources are gone and needed state is preserved.
-A versioned S3 bucket may require separate cleanup; the sequence is not a
-single-command destruction procedure.
-
----
-
-# Important Design Decisions
-
-## GitOps over direct Kubernetes deployment
-
-Applications are not deployed using:
-
-```
-kubectl apply
-```
-
-or:
-
-```
-helm upgrade
-```
-
-Git is the source of truth.
-
----
-
-## Terraform manages infrastructure
-
-Terraform creates:
-
-- AWS resources
-- Kubernetes platform components
-- Argo CD registration
-
-Terraform does not manage application releases.
-
----
-
-## Argo CD manages applications
-
-Argo CD owns:
-
-- Helm rendering
-- Kubernetes synchronization
-- Application lifecycle
-
----
-
-## IRSA instead of node IAM permissions
-
-AWS permissions are attached to Kubernetes service accounts instead of worker nodes.
-
-Benefits:
-
-- Least privilege
-- Better security isolation
-- AWS recommended approach
-
----
-
-# Lessons Learned
-
-During development several real-world issues were encountered:
-
-- Terraform state must be separated by lifecycle layer
-- EKS recreation changes OIDC providers
-- kubectl contexts must be refreshed after cluster recreation
-- Helm provider versions affect syntax
-- Argo CD Applications require correct source configuration
-- A Git repository containing only values.yaml cannot deploy without a Helm chart source
-- Multi-source Argo CD Applications are required when combining external Helm charts with Git-managed values
-- GitHub Actions must update GitOps repositories, not Kubernetes directly
-
----
-
-# Future Improvements
-
-Possible enhancements:
-
-- Add production environment
-- Add ApplicationSet for multiple applications
-- Add automated testing stages
-- Add security scanning gates
-- Add Terraform CI validation
-- Add Helm chart customization
-- Add External Secrets Operator
-- Add cert-manager
-- Add Karpenter autoscaling
-- Add monitoring dashboards
-
----
-
-# Project Status
-
-Recorded implementation milestones (verify current deployment separately):
-
-✅ AWS infrastructure automated with Terraform  
-✅ Amazon EKS cluster deployed  
-✅ Kubernetes platform configured  
-✅ AWS Load Balancer Controller installed  
-✅ Argo CD installed  
-✅ OpenTelemetry Demo deployed through GitOps  
-✅ GitHub Actions builds and publishes images  
-✅ GitOps image promotion workflow working  
-✅ Argo CD automatically synchronizes deployments  
-
-The project records a completed GitOps delivery path. Verify the current
-workflow run, GitOps revision, and cluster health before treating it as live.
-
-## Command-line application validation
-
-Run from `otel-demo-infra-aws`, not from the layer-04 Terraform directory.
-Configure the AWS context once if its alias does not exist:
+Configure the context after layer 02:
 
 ```bash
 aws-vault exec admin -- aws eks update-kubeconfig \
   --region us-east-1 --name otel-demo-aws-dev --alias otel-demo-aws
+aws-vault exec admin -- kubectl --context otel-demo-aws get nodes
+```
+
+Install the platform and then register the application:
+
+```bash
+aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev init
+aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev plan
+aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev apply
+aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev init
+aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev plan
+aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev apply
+```
+
+Keep the layers separate: the Argo CD CRDs installed by 03 must exist before
+Terraform can plan 04. New ECR repositories are empty. Configure release
+credentials, then run the AWS release workflows for **Ad, Product Catalog, and
+Recommendation** from `main` in `otel-demo-apps`. Each publishes its image and
+updates the corresponding GitOps values. See [release setup](../terraform/04-applications/README.md).
+
+## Validate the deployment
+
+```bash
 aws-vault exec admin -- make application-validate
 ```
 
-The script always passes its AWS context to cluster requests, regardless of the
-current kubectl context. To use the EKS-generated context name instead:
+The command waits for `otel-demo-aws` to be `Synced` and `Healthy`, checks all
+Deployment rollouts and three stable health samples, then prints pods and all
+three custom service images and image IDs. It is read-only. Set
+`AWS_CLUSTER_CONTEXT=<context>` to use a different EKS context.
+
+To verify a release:
+
+1. Find its source commit SHA and image URI in the successful AWS release job.
+2. Match that full SHA with the service's ECR tag and GitOps image override.
+3. Check Argo CD is synced to the generated GitOps commit.
+4. Match the deployed image reference and running image ID from validation.
+
+An image tag can point to an image index. The pod can report a platform image
+digest within that index, so compare it with the matching platform digest in
+ECR. A healthy rollout does not prove telemetry delivery: exercise the store,
+then check Ad, Product Catalog, and Recommendation traces in Jaeger and metrics
+in Grafana. OpenSearch is disabled in AWS; stored logs are not validated by this
+command. Container logs remain available through `kubectl logs`.
+
+## Open the application
+
+Keep this command running in a separate terminal:
 
 ```bash
-AWS_CLUSTER_CONTEXT=arn:aws:eks:us-east-1:650032249451:cluster/otel-demo-aws-dev \
-  aws-vault exec admin -- make application-validate
+aws-vault exec admin -- kubectl --context otel-demo-aws \
+  -n opentelemetry-demo port-forward svc/frontend-proxy 8080:8080
 ```
 
-It fails promptly for a missing context or an initial authentication/RBAC error.
-It then waits up to 900 seconds for Argo sync/health, checks every Deployment
-rollout, requires three consecutive healthy samples, and verifies that all three
-custom-service pod image references exist and are not kind development images.
-Pod and Argo summaries, all three image references, and running pod image IDs
-are printed on success. A healthy upstream Product Catalog image is allowed
-while its first custom AWS release is pending; the output reports what is
-actually running and does not claim that all three services use custom images.
+Open the store at `http://localhost:8080`, Grafana at
+`http://localhost:8080/grafana/`, or Jaeger at
+`http://localhost:8080/jaeger/ui/`.
 
-Compare each printed SHA tag with the service release run, and compare each
-running image ID digest with the published ECR image digest for exact content.
-This command reports running digests; it does not query ECR or automatically
-establish release-to-pod digest equality. It checks Kubernetes/Argo rollout
-health, not storefront behavior or downstream telemetry storage. In particular,
-AWS OpenSearch logging still needs separate configuration and validation.
-
-The script is read-only and does not create or refresh Argo operations, change
-kubeconfig, provision resources, or install a second Helm release. Context setup
-above is a separate local kubeconfig operation. Use
-`APPLICATION_VALIDATE_TIMEOUT_SECONDS` and `APPLICATION_VALIDATE_POLL_SECONDS`
-for positive-integer initial wait/poll overrides (defaults 900 and 10 seconds).
-Deployment rollout timeout is 600 seconds each; stable health checks have a
-separate 300-second budget, matching the kind command's behavior.
-
-Offline tests require Python 3 and no AWS credentials:
+For Argo CD, retrieve the initial password:
 
 ```bash
-python3 -m unittest discover -s tests -v
+aws-vault exec admin -- kubectl --context otel-demo-aws -n argocd \
+  get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 --decode
+echo
 ```
+
+Then keep this running in another terminal:
+
+```bash
+aws-vault exec admin -- kubectl --context otel-demo-aws \
+  -n argocd port-forward svc/argocd-server 18080:80
+```
+
+Open `http://localhost:18080` and sign in as `admin` with that password, unless
+you have changed it. The AWS Argo CD values use HTTP behind the service.
+
+## Troubleshooting
+
+For an image pull failure, inspect events and confirm the exact tag exists in
+ECR. After rebuilding the infrastructure, publish all three images again.
+
+```bash
+aws-vault exec admin -- kubectl --context otel-demo-aws \
+  -n opentelemetry-demo get events --sort-by=.lastTimestamp
+```
+
+For a skipped AWS release, check the workflow runs on `main` and the repository
+variable `AWS_RELEASES_ENABLED` is `true`. For access denied, compare its OIDC
+claims and role ARN with layer 04's output. For a stalled Argo sync, inspect the
+Application's sync errors and GitOps revision before changing workloads.
+
+## Tear down
+
+Set `AWS_RELEASES_ENABLED=false` in `otel-demo-apps` to stop automatic AWS
+publishing while the environment is down. Destroy in this order:
+
+```bash
+aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev destroy
+aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev destroy
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev destroy
+```
+
+Layer 04's Application finalizer lets Argo CD remove the demo workloads; its
+ECR `force_delete` setting removes stored images. Keep Argo CD running until
+04 finishes. Retained Argo CD CRDs reported by Helm are expected and disappear
+when EKS is deleted. Retain the shared layer-01 backend and GitHub OIDC provider.
