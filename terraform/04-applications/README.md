@@ -426,9 +426,22 @@ Note:
 
 Destroying this Terraform layer removes AWS application resources.
 
-It does not automatically remove Kubernetes applications managed by Argo CD.
+The Application declares Argo CD's foreground cascading-deletion finalizer.
+Deleting it through Terraform makes Argo remove the managed demo resources
+before Application deletion completes. A separate manual Application deletion
+is not required. Keep layer 03 and the Argo controller running until layer 04
+finishes destroying; then destroy 03 before 02.
 
-Those must be removed through GitOps/Argo CD first.
+Fresh installations receive the finalizer automatically. For an Application
+created before this setting was added, apply layer 04 once to install the
+finalizer before using `terraform destroy`. Changing the source file alone does
+not update an existing Application. If Argo was already uninstalled, restore
+its controller before expecting it to perform finalizer cleanup.
+
+ECR repositories must still be emptied before destroying this layer; the
+current configuration does not enable force deletion of images. Helm may keep
+Argo CRDs when layer 03 is uninstalled; that is separate from application cleanup
+and the CRDs disappear when layer 02 deletes the cluster.
 
 ---
 
@@ -630,10 +643,11 @@ Keep 03-platform (Argo CD/controller), 02-infrastructure (EKS/network), and the
 
 Rebuild sequence:
 
-1. Pause AWS release runs while rebuilding. In the current `main` checkout,
-   remove the demo Application with cascading deletion in Argo CD so its managed
-   workloads are cleaned up while the Argo controller is still available.
-   Layer 04's Terraform Application does not automatically cascade workloads.
+1. Pause AWS release runs while rebuilding and keep layer 03's Argo controller
+   running. The Application finalizer makes Terraform deletion cascade through
+   the demo workloads, so a separate manual Argo deletion is not needed.
+   An existing Application must already have the finalizer applied before
+   destroy; new installations include it automatically.
 2. Empty images from the layer-04 ECR repositories before destroying them.
    The current ECR configuration does not enable `force_delete`; AWS rejects
    deletion of repositories that still contain images. Do not delete unrelated
@@ -651,7 +665,7 @@ Rebuild sequence:
    publish, verify, and promote new images. Validate afterward with
    `aws-vault exec admin -- make application-validate` from the repo root.
 
-For a complete teardown after testing, remove application workloads first, then
-tear down 04 → 03 → 02 while their dependencies are available. Keep the shared
+For a complete teardown after testing, destroy 04 → 03 → 02. Layer 04's
+Application finalizer cleans up demo workloads while the controller is available. Keep the shared
 01 state backend for the next run; it is not necessary to destroy it to test or
 rebuild these publisher modules.
