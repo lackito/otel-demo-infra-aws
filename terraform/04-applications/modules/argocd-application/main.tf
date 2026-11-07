@@ -6,8 +6,9 @@ resource "kubernetes_manifest" "otel_demo" {
     kind       = "Application"
 
     metadata = {
-      name      = "otel-demo-aws"
-      namespace = "argocd"
+      name       = "otel-demo-aws"
+      namespace  = "argocd"
+      finalizers = ["resources-finalizer.argocd.argoproj.io"]
     }
 
     spec = {
