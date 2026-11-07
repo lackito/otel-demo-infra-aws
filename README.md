@@ -1,103 +1,57 @@
 # otel-demo-infra-aws
 
-An AWS platform engineering project that provisions infrastructure with
-**Terraform** and delivers the upstream **OpenTelemetry Demo** through
-**Helm, Argo CD, GitHub Actions, and Amazon ECR**.
+Provision AWS infrastructure with Terraform and deploy the
+[OpenTelemetry Demo](https://opentelemetry.io/docs/demo/) through Helm and Argo CD.
+Application source lives in `otel-demo-apps`; AWS desired state lives in
+`otel-demo-gitops-aws`.
 
-This repository owns AWS provisioning, platform services, and Argo CD
-Application registration. Application source and Kubernetes desired state live
-in separate repositories.
+## How it works
 
-## Engineering focus
-
-- Separate Terraform state by lifecycle: backend, infrastructure, platform, and applications.
-- Provision networking, EKS, and IAM through reusable Terraform modules.
-- Install the AWS Load Balancer Controller with IAM Roles for Service Accounts (IRSA).
-- Authenticate GitHub Actions to AWS using OIDC for Recommendation image publishing.
-- Let Argo CD reconcile application releases from GitOps values rather than deploying from CI.
-
-The demo application comes from OpenTelemetry. The work here focuses on its
-infrastructure, delivery automation, and operational boundaries.
-
-## Architecture
-
-```mermaid
-flowchart LR
-    A[Application source] --> B[GitHub Actions]
-    B --> C[Amazon ECR]
-    B --> D[GitOps values commit]
-    D --> E[Argo CD]
-    H[Upstream Helm chart] --> E
-    E --> F[EKS workloads]
-    C --> F
-    T[Terraform layers] --> G[AWS infrastructure and platform]
-    G --> E
+```text
+Application change on main → GitHub Actions → ECR image
+                                  ↓
+                           GitOps values commit
+                                  ↓
+                               Argo CD → EKS
 ```
 
-CI builds and publishes an image, then updates the GitOps repository. Argo CD
-renders the chart with those values and reconciles the workloads. Terraform
-manages infrastructure and platform setup independently of application releases.
+Ad, Product Catalog, and Recommendation each have an independent release
+workflow and ECR publisher role. CI publishes images and updates GitOps values;
+Argo CD deploys the workloads. Terraform manages the infrastructure, platform,
+ECR repositories, publisher roles, and Application registration.
 
-## Terraform layers
-
-| Layer | Responsibility |
-|---|---|
-| [01-bootstrap](terraform/01-bootstrap/) | S3 state bucket with versioning, encryption, and public access blocking; downstream backends use S3 lockfiles |
-| [02-infrastructure](terraform/02-infrastructure/) | VPC, subnets, EKS, worker nodes, and cluster IAM/OIDC resources |
-| [03-platform](terraform/03-platform/) | AWS Load Balancer Controller with IRSA, and Argo CD |
-| [04-applications](terraform/04-applications/) | ECR repositories, GitHub Actions IAM permissions, and Argo CD Application registration |
-
-Start with the backend, then apply layers 02 → 03 → 04. Read the linked layer
-documentation and operations guide before provisioning; the configuration uses
-project-specific AWS and GitHub settings.
-
-## Documentation
+## Start here
 
 | Goal | Guide |
-|---|---|
-| Understand the complete delivery path | [Project walkthrough](docs/PROJECT_WALKTHROUGH.md) |
-| Review deployment, verification, teardown, and design decisions | [Operations guide](docs/OPERATIONS.md) |
-| Inspect infrastructure configuration | [Infrastructure guide](terraform/02-infrastructure/README.md) |
-| Inspect platform configuration | [Platform guide](terraform/03-platform/README.md) |
-| Inspect application registration and ECR | [Applications guide](terraform/04-applications/README.md) |
-| Continue development or review milestones | [Project context](docs/PROJECT_CONTEXT.md) and [changelog](docs/CHANGELOG.md) |
+| --- | --- |
+| Build, verify, access, or destroy the environment | [Operations](docs/OPERATIONS.md) |
+| Understand ownership and delivery | [Architecture](docs/ARCHITECTURE.md) |
+| Create the network and EKS | [02: Infrastructure](terraform/02-infrastructure/README.md) |
+| Install controllers and Argo CD | [03: Platform](terraform/03-platform/README.md) |
+| Set up ECR, release roles, and the Application | [04: Application](terraform/04-applications/README.md) |
 
-## Implementation and verification
+Terraform runs in order: state backend `01-bootstrap`, then 02 → 03 → 04.
+Routine teardown uses 04 → 03 → 02 and retains the shared state backend.
 
-The repository contains the four Terraform layers and the Recommendation
-release permissions. The project documentation records EKS deployment and
-GitOps delivery milestones. For a current deployment, verify EKS nodes, Argo CD
-sync/health, and application pods using the operations guide.
+## Validate the application
 
-For a release, compare the application workflow run, ECR image tag, GitOps
-commit, and deployed image. Recorded milestones do not establish current
-cluster health. Future improvements are listed in the operations guide.
-
-## Validate the AWS application
-
-From this repository's root, with AWS credentials and the EKS kubeconfig alias
-configured:
+From this repository's root, after configuring the EKS context:
 
 ```bash
 aws-vault exec admin -- make application-validate
 ```
 
-The command reads the explicit `otel-demo-aws` context, waits for Argo CD
-`otel-demo-aws` to be Synced/Healthy, checks Deployment rollouts and three stable
-health samples, and prints pods plus Recommendation, Ad, and Product Catalog
-image references and running image IDs. It does not deploy or change resources.
-
-If credentials are already exported in your shell, use `make application-validate`
-directly. Override the context using `AWS_CLUSTER_CONTEXT=<eks-context>`.
-See [command setup and output interpretation](docs/OPERATIONS.md#command-line-application-validation).
+This reads the `otel-demo-aws` context, checks Argo CD health and deployment
+rollouts, and prints the images and running image IDs for all three custom
+services. It does not change resources. See [validation](docs/OPERATIONS.md#validate-the-deployment)
+for image comparison and telemetry checks.
 
 ## Related repositories
 
-- [otel-demo-apps](https://github.com/lackito/otel-demo-apps): application source and release workflows.
-- [otel-demo-gitops-aws](https://github.com/lackito/otel-demo-gitops-aws): AWS Helm values and Argo CD desired state.
-- [otel-demo-infra-kind](https://github.com/lackito/otel-demo-infra-kind): local kind platform and validation tooling.
-- [otel-demo-gitops-kind](https://github.com/lackito/otel-demo-gitops-kind): local Helm values and Gateway resources.
+- [otel-demo-apps](https://github.com/lackito/otel-demo-apps): source, build, and release workflows.
+- [otel-demo-gitops-aws](https://github.com/lackito/otel-demo-gitops-aws): AWS application values.
+- [otel-demo-infra-kind](https://github.com/lackito/otel-demo-infra-kind): local cluster and platform.
+- [otel-demo-gitops-kind](https://github.com/lackito/otel-demo-gitops-kind): local application values.
 
-## Environment naming
-
-See the shared [naming and migration guide](https://github.com/lackito/otel-demo-apps/blob/main/docs/NAMING.md) for repository names, runtime identities, and the coordinated rename sequence.
+See [Names and repositories](https://github.com/lackito/otel-demo-apps/blob/main/docs/NAMING.md)
+for the shared naming reference.

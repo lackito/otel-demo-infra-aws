@@ -1,178 +1,46 @@
-# 02 - Infrastructure
+# 02: Infrastructure
 
-## Overview
+Create the AWS network and EKS cluster used by the demo.
 
-The Infrastructure layer provisions the core AWS networking and Kubernetes resources required by the OpenTelemetry Demo platform.
+## Resources
 
-This layer is responsible for creating the foundational infrastructure that all higher layers depend on.
+- VPC, public and private subnets, routing, and NAT.
+- EKS cluster and managed worker nodes.
+- Cluster IAM roles and the EKS OIDC provider used for IRSA.
 
-The infrastructure is intentionally isolated from the Platform and Application layers to provide clear ownership boundaries and independent Terraform state management.
+Dev settings live in `environments/dev/terraform.tfvars`. Review the Kubernetes
+version, region, instance type, and node counts before applying. State is stored
+in the S3 backend configured in that environment. The shared backend must exist.
 
----
+## Deploy
 
-## Resources Created
-
-### Networking
-
-- VPC
-- Public Subnets
-- Private Subnets
-- Internet Gateway
-- Route Tables
-- NAT Gateway (if enabled)
-
-### Kubernetes
-
-- Amazon EKS Cluster
-- Managed Node Groups
-- IAM Roles for the EKS Control Plane
-- IAM Roles for Worker Nodes
-
----
-
-## Repository Structure
-
-```
-02-infrastructure/
-├── environments/
-│   ├── dev/
-│   └── prod/
-│
-└── modules/
-    ├── eks-cluster/
-    └── vpc/
-```
-
----
-
-## Inputs
-
-Environment-specific values are defined in:
-
-```
-environments/<environment>/terraform.tfvars
-```
-
-Examples include:
-
-- Environment
-- Cluster Version
-- VPC CIDR
-- Availability Zones
-- Node Group Configuration
-
----
-
-## Outputs
-
-This layer exposes the following outputs for downstream Terraform projects.
-
-| Output | Description |
-|---------|-------------|
-| cluster_name | EKS Cluster Name |
-| cluster_endpoint | Kubernetes API Endpoint |
-| cluster_certificate_authority_data | Kubernetes CA Certificate |
-| cluster_oidc_issuer_url | OIDC Issuer URL |
-| cluster_security_group_id | Cluster Security Group |
-| vpc_id | VPC Identifier |
-| private_subnet_ids | Private Subnets |
-| public_subnet_ids | Public Subnets |
-| node_group_role_arn | Worker Node IAM Role |
-
-These outputs are consumed by the **03-platform** layer using `terraform_remote_state`.
-
----
-
-## Deployment
-
-Change into the desired environment.
+From the repository root:
 
 ```bash
-cd environments/dev
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev init
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev plan
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev apply
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev output
 ```
 
-Initialize Terraform.
+Outputs include the cluster name, endpoint, VPC and subnet IDs, and OIDC
+provider details consumed by the platform layer.
 
 ```bash
-terraform init
+aws-vault exec admin -- aws eks update-kubeconfig \
+  --region us-east-1 --name otel-demo-aws-dev --alias otel-demo-aws
+aws-vault exec admin -- kubectl --context otel-demo-aws get nodes
 ```
 
-Review the execution plan.
-
-```bash
-terraform plan
-```
-
-Deploy the infrastructure.
-
-```bash
-terraform apply
-```
-
----
-
-## Validation
-
-Update the local kubeconfig.
-
-```bash
-aws eks update-kubeconfig \
-  --region us-east-1 \
-  --name <cluster-name>
-```
-
-Verify cluster access.
-
-```bash
-kubectl get nodes
-```
-
-Expected output:
-
-- Worker nodes are in the `Ready` state.
-
----
+Continue with [03: Platform](../03-platform/README.md) once nodes are ready.
 
 ## Destroy
 
+Destroy layers 04 and 03 first, while Kubernetes is reachable. Then run:
+
 ```bash
-terraform destroy
+aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev destroy
 ```
 
-The Infrastructure layer should only be destroyed after all Platform and Application resources have been removed.
-
-Destroy order:
-
-1. Applications
-2. Platform
-3. Infrastructure
-4. Bootstrap (optional)
-
----
-
-## Dependencies
-
-### Required
-
-- AWS Account
-- Bootstrap layer completed
-- Remote Terraform State Bucket
-- AWS CLI configured
-
-### Produces
-
-The Infrastructure layer produces the networking and Kubernetes platform required by:
-
-- 03-platform
-- 04-applications
-
----
-
-## Design Principles
-
-- Modular Terraform architecture
-- Separate Terraform state per layer
-- Environment-specific configuration
-- Reusable Terraform modules
-- Infrastructure exposed through Terraform outputs
-- Platform consumes Infrastructure via `terraform_remote_state`
+Keep Terraform state and the shared backend for the next run. See
+[Operations](../../docs/OPERATIONS.md) for the full lifecycle.
