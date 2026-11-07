@@ -438,8 +438,13 @@ finalizer before using `terraform destroy`. Changing the source file alone does
 not update an existing Application. If Argo was already uninstalled, restore
 its controller before expecting it to perform finalizer cleanup.
 
-ECR repositories must still be emptied before destroying this layer; the
-current configuration does not enable force deletion of images. Helm may keep
+The disposable dev environment sets `force_delete = true` on its ECR module.
+Terraform destroy deletes these repositories including all stored images, image
+indexes, and attestations; a separate image-cleanup command is not needed.
+The reusable module defaults to false for environments that retain images.
+For repositories created before this setting, apply the updated configuration
+once before destroy so Terraform records the setting. Adding it to source and
+immediately running destroy does not persist it in existing state. Helm may keep
 Argo CRDs when layer 03 is uninstalled; that is separate from application cleanup
 and the CRDs disappear when layer 02 deletes the cluster.
 
@@ -648,10 +653,10 @@ Rebuild sequence:
    the demo workloads, so a separate manual Argo deletion is not needed.
    An existing Application must already have the finalizer applied before
    destroy; new installations include it automatically.
-2. Empty images from the layer-04 ECR repositories before destroying them.
-   The current ECR configuration does not enable `force_delete`; AWS rejects
-   deletion of repositories that still contain images. Do not delete unrelated
-   repositories or the shared GitHub OIDC provider.
+2. The dev ECR module's `force_delete = true` removes stored images together
+   with its repositories. No manual image cleanup is required after that setting
+   has been applied. Existing repositories need the setting applied once first.
+   Unrelated repositories and the shared GitHub OIDC provider are unaffected.
 3. From `terraform/04-applications/environments/dev`, run `terraform destroy`
    under `aws-vault exec admin --`. Review the destroy plan. Existing roles,
    policies, ECR repositories, and Application registration belong to this layer.
@@ -669,3 +674,29 @@ For a complete teardown after testing, destroy 04 → 03 → 02. Layer 04's
 Application finalizer cleans up demo workloads while the controller is available. Keep the shared
 01 state backend for the next run; it is not necessary to destroy it to test or
 rebuild these publisher modules.
+
+## ECR cleanup during destroy
+
+`environments/dev/main.tf` explicitly opts into the ECR module's `force_delete`
+setting because this environment is disposable. The module itself defaults to
+false. This affects only repositories in `local.ecr_repositories`; it does not
+grant image or repository deletion rights to application publishing workflows.
+
+When Terraform deletes one of these repositories, AWS also deletes its images.
+This includes tagged manifests, image indexes, and untagged build attestations.
+No provisioner, shell cleanup script, or ECR lifecycle policy is needed.
+
+New repositories receive the setting during creation. If they already exist,
+review and apply a normal plan once to record the setting before destroying.
+If the previous environment is already gone, the next rebuild handles this
+automatically. Retain the 04 → 03 → 02 teardown order so Argo can finish the
+Application finalizer while its controller is still available.
+
+The module has credential-free plan tests for the default retained-image behavior
+and the explicit disposable-environment opt-in:
+
+```sh
+cd ../../modules/ecr-repositories
+terraform init -backend=false
+terraform test
+```

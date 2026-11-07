@@ -1,6 +1,8 @@
 module "ecr_repositories" {
   source       = "../../modules/ecr-repositories"
   repositories = local.ecr_repositories
+  # This dev environment is disposable; destroy also removes its stored images.
+  force_delete = true
   tags         = local.common_tags
 }
 
