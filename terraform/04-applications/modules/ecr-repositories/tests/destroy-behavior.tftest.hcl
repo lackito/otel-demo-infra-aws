@@ -5,8 +5,6 @@ variables {
     recommendation  = {}
     ad              = { image_tag_mutability = "IMMUTABLE" }
     product-catalog = { image_tag_mutability = "IMMUTABLE" }
-    checkout        = { image_tag_mutability = "IMMUTABLE" }
-    frontend        = {}
   }
 }
 
@@ -27,8 +25,8 @@ run "delete_images_for_disposable_environment" {
   }
 
   assert {
-    condition     = length(aws_ecr_repository.this) == 5 && alltrue([for repository in aws_ecr_repository.this : repository.force_delete])
-    error_message = "The dev opt-in must enable cleanup on all five configured repositories."
+    condition     = toset(keys(aws_ecr_repository.this)) == toset(["ad", "product-catalog", "recommendation"]) && alltrue([for repository in aws_ecr_repository.this : repository.force_delete])
+    error_message = "The dev opt-in must enable cleanup on exactly the three custom service repositories."
   }
 
   assert {

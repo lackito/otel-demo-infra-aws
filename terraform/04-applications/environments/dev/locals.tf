@@ -10,11 +10,6 @@ locals {
       scan_on_push = true
     }
 
-    checkout = {
-      image_tag_mutability = "IMMUTABLE"
-    }
-
-    frontend        = {}
     product-catalog = { image_tag_mutability = "IMMUTABLE" }
     ad              = { image_tag_mutability = "IMMUTABLE" }
 
