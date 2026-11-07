@@ -54,10 +54,10 @@ configuration and branch usage, see the
 From the infrastructure repository root:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev init
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev plan
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev apply
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev output
+terraform -chdir=terraform/04-applications/environments/dev init
+terraform -chdir=terraform/04-applications/environments/dev plan
+terraform -chdir=terraform/04-applications/environments/dev apply
+terraform -chdir=terraform/04-applications/environments/dev output
 ```
 
 | Output | Contents |
@@ -75,7 +75,7 @@ service's image override in the AWS GitOps repository. Argo CD deploys the pushe
 values change.
 
 ```bash
-aws-vault exec admin -- make application-validate
+make application-validate
 ```
 
 Compare all three image tags with their release commit SHAs. Compare running
@@ -95,7 +95,7 @@ cleans up its workloads when Terraform deletes it. Keep Argo CD and EKS running
 until layer 04 finishes:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/04-applications/environments/dev destroy
+terraform -chdir=terraform/04-applications/environments/dev destroy
 ```
 
 You can recreate just this layer while retaining 02 and 03. Republish **all

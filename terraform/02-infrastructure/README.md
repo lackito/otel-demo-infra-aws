@@ -17,19 +17,19 @@ in the S3 backend configured in that environment. The shared backend must exist.
 From the repository root:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev init
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev plan
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev apply
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev output
+terraform -chdir=terraform/02-infrastructure/environments/dev init
+terraform -chdir=terraform/02-infrastructure/environments/dev plan
+terraform -chdir=terraform/02-infrastructure/environments/dev apply
+terraform -chdir=terraform/02-infrastructure/environments/dev output
 ```
 
 Outputs include the cluster name, endpoint, VPC and subnet IDs, and OIDC
 provider details consumed by the platform layer.
 
 ```bash
-aws-vault exec admin -- aws eks update-kubeconfig \
+aws eks update-kubeconfig \
   --region us-east-1 --name otel-demo-aws-dev --alias otel-demo-aws
-aws-vault exec admin -- kubectl --context otel-demo-aws get nodes
+kubectl --context otel-demo-aws get nodes
 ```
 
 Continue with [03: Platform](../03-platform/README.md) once nodes are ready.
@@ -39,7 +39,7 @@ Continue with [03: Platform](../03-platform/README.md) once nodes are ready.
 Destroy layers 04 and 03 first, while Kubernetes is reachable. Then run:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/02-infrastructure/environments/dev destroy
+terraform -chdir=terraform/02-infrastructure/environments/dev destroy
 ```
 
 Keep Terraform state and the shared backend for the next run. See

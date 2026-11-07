@@ -19,9 +19,9 @@ operations guide uses port forwarding for access.
 From the repository root:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev init
-aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev plan
-aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev apply
+terraform -chdir=terraform/03-platform/environments/dev init
+terraform -chdir=terraform/03-platform/environments/dev plan
+terraform -chdir=terraform/03-platform/environments/dev apply
 ```
 
 This layer reads infrastructure outputs from remote state. Review settings in
@@ -30,10 +30,10 @@ This layer reads infrastructure outputs from remote state. Review settings in
 ## Validate
 
 ```bash
-aws-vault exec admin -- kubectl --context otel-demo-aws \
+kubectl --context otel-demo-aws \
   -n kube-system rollout status deployment/aws-load-balancer-controller
-aws-vault exec admin -- kubectl --context otel-demo-aws -n argocd get pods
-aws-vault exec admin -- helm list --all-namespaces
+kubectl --context otel-demo-aws -n argocd get pods
+helm list --all-namespaces
 ```
 
 Continue with [04: Application](../04-applications/README.md).
@@ -46,7 +46,7 @@ Destroy layer 04 first: its Application finalizer needs a running Argo CD to
 remove managed workloads. Then run:
 
 ```bash
-aws-vault exec admin -- terraform -chdir=terraform/03-platform/environments/dev destroy
+terraform -chdir=terraform/03-platform/environments/dev destroy
 ```
 
 Helm can report retained Argo CD CRDs. They remain until the cluster is deleted;
