@@ -2,6 +2,17 @@
 
 [Overview](../README.md) · [Operations](OPERATIONS.md)
 
+## Engineering focus
+
+- Separate Terraform state by lifecycle: backend, infrastructure, platform, and applications.
+- Provision networking, EKS, and IAM through reusable Terraform modules.
+- Install the AWS Load Balancer Controller with IAM Roles for Service Accounts (IRSA).
+- Authenticate GitHub Actions to AWS using OIDC for services (Ad/Product Catalog/Recommendation) image publishing.
+- Let Argo CD reconcile application releases from GitOps values rather than deploying from CI.
+
+The demo application comes from OpenTelemetry. The work here focuses on its
+infrastructure, delivery automation, and operational boundaries.
+
 ## Ownership
 
 | Owner | Responsibility |
@@ -14,15 +25,16 @@
 | `otel-demo-gitops-aws` | Helm values and the declarative Application definition |
 | Argo CD | Reconciliation of application workloads |
 
-Terraform layers have separate state and consume outputs from the preceding
-layers. Argo CD and its CRDs must exist before layer 04 can plan the Application.
-The Helm release is `otel-demo` in namespace `opentelemetry-demo`.
+- Terraform layers have separate state and consume outputs from the preceding
+layers.
+- Argo CD and its CRDs must exist before layer 04 can plan the Application.
+- The Helm release is `otel-demo` in namespace `opentelemetry-demo`.
 
 ## Releases
 
 A service change on `otel-demo-apps/main` starts its AWS release workflow when
 `AWS_RELEASES_ENABLED=true`. The workflow assumes that service's IAM role via
-GitHub OIDC, publishes an immutable full-commit-SHA image to ECR, smoke-tests it,
+GitHub OIDC, publishes an image tagged with the full source commit SHA, smoke-tests it,
 and updates that service's image in `otel-demo-gitops-aws/main`.
 Argo CD renders the upstream chart with those values and deploys the change.
 
