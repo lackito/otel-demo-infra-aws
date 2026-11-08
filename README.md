@@ -1,28 +1,35 @@
 # otel-demo-infra-aws
 
-Provision AWS infrastructure with Terraform and deploy the
-[OpenTelemetry Demo](https://opentelemetry.io/docs/demo/) through Helm and Argo CD.
-Application source lives in `otel-demo-apps`; AWS desired state lives in
-`otel-demo-gitops-aws`.
+An AWS platform engineering project that provisions infrastructure with **Terraform** and delivers the upstream **[OpenTelemetry Demo](https://opentelemetry.io/docs/demo/)** through **Helm, Argo CD, GitHub Actions, and Amazon ECR**.
 
-Before running AWS commands, authenticate to the intended AWS account with
-an identity that has the required permissions. All command examples assume
-credentials are already available in your shell.
+This repository owns AWS provisioning, platform services, and Argo CD
+Application registration.
+
+Application source ([otel-demo-apps](https://github.com/lackito/otel-demo-apps)) and Kubernetes desired state ([otel-demo-gitops-aws](https://github.com/lackito/otel-demo-gitops-aws)) live
+in separate repositories.
+
+_\*Commands in documentation assume you are authenticated to the intended AWS account with the required permissions._
 
 ## How it works
 
-```text
-Application change on main → GitHub Actions → ECR image
-                                  ↓
-                           GitOps values commit
-                                  ↓
-                               Argo CD → EKS
+```mermaid
+flowchart LR
+    A[Application source] --> B[GitHub Actions]
+    B --> C[Amazon ECR]
+    B --> D[GitOps values commit]
+    D --> E[Argo CD]
+    H[Upstream Helm chart] --> E
+    E --> F[EKS workloads]
+    C --> F
+    T[Terraform layers] --> G[AWS infrastructure and platform]
+    G --> E
 ```
 
-Ad, Product Catalog, and Recommendation each have an independent release
-workflow and ECR publisher role. CI publishes images and updates GitOps values;
-Argo CD deploys the workloads. Terraform manages the infrastructure, platform,
-ECR repositories, publisher roles, and Application registration.
+- Terraform manages the infrastructure, platform, ECR repositories, publisher roles, and Application registration.
+- Ad, Product Catalog, and Recommendation each have an independent release
+workflow and ECR publisher role.
+- CI publishes images and updates GitOps values.
+- Argo CD deploys the workloads.
 
 ## Start here
 
