@@ -2,20 +2,25 @@
 
 An AWS platform engineering project that provisions infrastructure with **Terraform** and delivers the upstream **[OpenTelemetry Demo](https://opentelemetry.io/docs/demo/)** through **Helm, Argo CD, GitHub Actions, and Amazon ECR**.
 
+The deployment uses custom versions of `Ad`, `Product Catalog`, and `Recommendation`,
+built from [otel-demo-apps](https://github.com/lackito/otel-demo-apps) and published to Amazon ECR. GitOps image overrides
+replace the corresponding upstream images while retaining the upstream
+OpenTelemetry Demo Helm chart.
+
 This repository owns AWS provisioning, platform services, and Argo CD
 Application registration.
 
-Application source ([otel-demo-apps](https://github.com/lackito/otel-demo-apps)) and Kubernetes desired state ([otel-demo-gitops-aws](https://github.com/lackito/otel-demo-gitops-aws)) live
-in separate repositories.
+## Related repositories
 
-_\*Commands in documentation assume you are authenticated to the intended AWS account with the required permissions._
+- [otel-demo-apps](https://github.com/lackito/otel-demo-apps): Custom services source, build, and release workflows.
+- [otel-demo-gitops-aws](https://github.com/lackito/otel-demo-gitops-aws): AWS application desired state.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    A[Application source] --> B[GitHub Actions]
-    B --> C[Amazon ECR]
+    A["Custom service source<br/>Ad, Product Catalog, Recommendation"] --> B[GitHub Actions]
+    B --> C["Amazon ECR: custom images"]
     B --> D[GitOps values commit]
     D --> E[Argo CD]
     H[Upstream Helm chart] --> E
@@ -26,9 +31,9 @@ flowchart LR
 ```
 
 - Terraform manages the infrastructure, platform, ECR repositories, publisher roles, and Application registration.
-- Ad, Product Catalog, and Recommendation each have an independent release
+- Custom services (`Ad`, `Product Catalog`, and `Recommendation`) each have an independent release
 workflow and ECR publisher role.
-- CI publishes images and updates GitOps values.
+- Release workflows publish custom service images to ECR and update their GitOps image overrides.
 - Argo CD deploys the workloads.
 
 ## Start here
@@ -57,12 +62,10 @@ rollouts, and prints the images and running image IDs for all three custom
 services. It does not change resources. See [validation](docs/OPERATIONS.md#validate-the-deployment)
 for image comparison and telemetry checks.
 
-## Related repositories
+## Other repositories
 
-- [otel-demo-apps](https://github.com/lackito/otel-demo-apps): source, build, and release workflows.
-- [otel-demo-gitops-aws](https://github.com/lackito/otel-demo-gitops-aws): AWS application values.
-- [otel-demo-infra-kind](https://github.com/lackito/otel-demo-infra-kind): local cluster and platform.
-- [otel-demo-gitops-kind](https://github.com/lackito/otel-demo-gitops-kind): local application values.
+- [otel-demo-infra-kind](https://github.com/lackito/otel-demo-infra-kind): local kind cluster and platform.
+- [otel-demo-gitops-kind](https://github.com/lackito/otel-demo-gitops-kind): local kind application state.
 
 See [Names and repositories](https://github.com/lackito/otel-demo-apps/blob/main/docs/NAMING.md)
 for the shared naming reference.
